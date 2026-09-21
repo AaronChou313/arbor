@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arbor UI Prototype</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-row">
+        <button class="brand" data-action="chat">Arbor</button>
+        <button class="icon-btn mobile-only" title="Close sidebar">×</button>
+      </div>
+
+      <button class="new-chat" data-action="new-chat">
+        <span>＋</span>
+        <span>New chat</span>
+      </button>
+
+      <div class="history">
+        <div class="history-label">Today</div>
+        <button class="history-item active">最小二乘法</button>
+        <button class="history-item">卡尔曼滤波</button>
+
+        <div class="history-label">Previous</div>
+        <button class="history-item">卷积神经网络</button>
+        <button class="history-item">矩阵分解</button>
+      </div>
+
+      <button class="settings-entry" data-action="settings">
+        <span>⚙</span>
+        <span>Settings</span>
+      </button>
+    </aside>
+
+    <main class="main">
+      <section id="chat-page" class="page active">
+        <header class="chat-header">
+          <div>
+            <div class="eyebrow">Current conversation</div>
+            <div class="chat-title">最小二乘法</div>
+          </div>
+          <div class="header-actions">
+            <button class="text-btn" data-action="tree">Tree</button>
+            <button class="icon-btn" data-action="theme" title="Toggle theme">◐</button>
+          </div>
+        </header>
+
+        <div class="chat-scroll">
+          <div class="messages">
+            <article class="message user-message">
+              <div class="message-role">You</div>
+              <div class="message-body">最小二乘法有哪些类别？</div>
+            </article>
+
+            <article class="message assistant-message">
+              <div class="message-role">Arbor</div>
+              <div class="assistant-intro">
+                最小二乘法可以按误差假设和模型形式分成几类。学习时可以先抓住一个核心：
+                <strong>到底允许谁有误差，以及模型是不是线性的。</strong>
+              </div>
+
+              <button class="answer-section" data-anchor="普通最小二乘法">
+                <span class="section-topline">
+                  <span class="section-title">普通最小二乘法 OLS</span>
+                  <span class="section-arrow">↗</span>
+                </span>
+                <span class="section-content">
+                  默认自变量已知且误差主要位于观测量，通过最小化残差平方和估计参数。
+                </span>
+              </button>
+
+              <button class="answer-section" data-anchor="加权最小二乘法">
+                <span class="section-topline">
+                  <span class="section-title">加权最小二乘法 WLS</span>
+                  <span class="section-arrow">↗</span>
+                </span>
+                <span class="section-content">
+                  不同观测量可靠性不同时，为每个残差设置不同权重。
+                </span>
+              </button>
+
+              <button class="answer-section" data-anchor="总最小二乘法">
+                <span class="section-topline">
+                  <span class="section-title">总最小二乘法 TLS</span>
+                  <span class="section-arrow">↗</span>
+                </span>
+                <span class="section-content">
+                  当自变量和因变量都可能带误差时，同时修正数据矩阵与观测向量。
+                </span>
+              </button>
+
+              <button class="answer-section" data-anchor="非线性最小二乘法">
+                <span class="section-topline">
+                  <span class="section-title">非线性最小二乘法 NLS</span>
+                  <span class="section-arrow">↗</span>
+                </span>
+                <span class="section-content">
+                  模型对待估参数是非线性的，常通过迭代线性化求解。
+                </span>
+              </button>
+            </article>
+
+            <article class="message user-message branch-message">
+              <div class="message-role">You · from 总最小二乘法</div>
+              <div class="message-body">TLS 具体是怎么求解的？</div>
+            </article>
+
+            <article class="message assistant-message">
+              <div class="message-role">Arbor</div>
+              <div class="assistant-intro">
+                TLS 的经典求法可以理解为：把观测矩阵扩展后，寻找“最小改动就能让模型严格成立”的方向。
+              </div>
+
+              <button class="answer-section" data-anchor="构造增广矩阵">
+                <span class="section-topline">
+                  <span class="section-title">1. 构造增广矩阵</span>
+                  <span class="section-arrow">↗</span>
+                </span>
+                <span class="section-content">把 A 和 b 拼成 [A | b]，统一看成带误差的数据。</span>
+              </button>
+
+              <button class="answer-section" data-anchor="SVD">
+                <span class="section-topline">
+                  <span class="section-title">2. 对增广矩阵做 SVD</span>
+                  <span class="section-arrow">↗</span>
+                </span>
+                <span class="section-content">最小奇异值对应“最容易被修正掉”的方向。</span>
+              </button>
+
+              <button class="answer-section" data-anchor="恢复参数">
+                <span class="section-topline">
+                  <span class="section-title">3. 从右奇异向量恢复参数</span>
+                  <span class="section-arrow">↗</span>
+                </span>
+                <span class="section-content">利用最小奇异值对应的右奇异向量得到 TLS 参数。</span>
+              </button>
+            </article>
+          </div>
+        </div>
+
+        <div class="composer-wrap">
+          <div class="composer">
+            <div id="anchor-chip" class="anchor-chip hidden">
+              <span>基于：<strong id="anchor-title"></strong></span>
+              <button id="clear-anchor" aria-label="Clear anchor">×</button>
+            </div>
+            <textarea id="composer-input" rows="1" placeholder="Ask anything..."></textarea>
+            <div class="composer-footer">
+              <button class="model-pill">Claude Sonnet <span>⌄</span></button>
+              <button id="send-btn" class="send-btn">↑</button>
+            </div>
+          </div>
+          <div class="composer-note">Enter to send · Shift+Enter for new line</div>
+        </div>
+      </section>
+
+      <section id="settings-page" class="page settings-page">
+        <header class="settings-header">
+          <div>
+            <div class="eyebrow">Arbor</div>
+            <h1>Settings</h1>
+          </div>
+          <button class="text-btn" data-action="chat">Back to chat</button>
+        </header>
+
+        <div class="settings-content">
+          <section class="settings-section">
+            <div class="settings-section-title">
+              <h2>Providers</h2>
+              <button class="secondary-btn">＋ Add provider</button>
+            </div>
+
+            <div class="provider-row active">
+              <div>
+                <strong>Claude</strong>
+                <span>Anthropic · claude-sonnet</span>
+              </div>
+              <span class="status-dot">Active</span>
+            </div>
+
+            <div class="provider-editor">
+              <label>Name<input value="Claude" /></label>
+              <label>Protocol
+                <select>
+                  <option>Anthropic</option>
+                  <option>OpenAI Responses</option>
+                  <option>Chat Completions</option>
+                </select>
+              </label>
+              <label>Base URL<input value="https://api.example.com" /></label>
+              <label>API Key<input type="password" value="sk-placeholder" /></label>
+              <label>Model<input value="claude-sonnet" /></label>
+              <div class="form-actions">
+                <button class="secondary-btn">Test connection</button>
+                <button class="primary-btn">Save</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-section split">
+            <div>
+              <h2>Response</h2>
+              <p>Control how Arbor structures learning answers.</p>
+            </div>
+            <div class="compact-form">
+              <label>Detail
+                <select>
+                  <option>Balanced</option>
+                  <option>Concise</option>
+                  <option>Detailed</option>
+                </select>
+              </label>
+              <label>Section density
+                <select>
+                  <option>Medium</option>
+                  <option>Low</option>
+                  <option>High</option>
+                </select>
+              </label>
+              <label>Math
+                <select>
+                  <option>Auto</option>
+                  <option>Prefer LaTeX</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-section split">
+            <div>
+              <h2>System prompt</h2>
+              <p>Optional personal learning context.</p>
+            </div>
+            <textarea class="system-prompt" rows="5">我是测绘专业研究生，解释概念时优先结合线性代数、测量平差和机器人导航。</textarea>
+          </section>
+
+          <section class="settings-section split">
+            <div>
+              <h2>Appearance</h2>
+              <p>Keep Arbor quiet and readable.</p>
+            </div>
+            <div class="segmented">
+              <button>System</button>
+              <button class="active">Light</button>
+              <button>Dark</button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <aside id="tree-drawer" class="tree-drawer">
+      <div class="tree-header">
+        <div>
+          <div class="eyebrow">Conversation</div>
+          <strong>Knowledge tree</strong>
+        </div>
+        <button class="icon-btn" data-action="tree-close">×</button>
+      </div>
+
+      <div class="tree">
+        <button class="tree-node ancestor"><span class="node-dot"></span><span>最小二乘法有哪些类别？</span></button>
+        <div class="tree-children">
+          <button class="tree-node"><span class="node-dot"></span><span>普通最小二乘法</span></button>
+          <button class="tree-node current"><span class="node-dot"></span><span>TLS 具体怎么求解？</span></button>
+          <div class="tree-children">
+            <button class="tree-node"><span class="node-dot"></span><span>SVD 是什么？</span></button>
+            <button class="tree-node"><span class="node-dot"></span><span>最小修正的几何意义</span></button>
+          </div>
+          <button class="tree-node"><span class="node-dot"></span><span>非线性最小二乘怎么迭代？</span></button>
+        </div>
+      </div>
+    </aside>
+    <div id="drawer-backdrop" class="drawer-backdrop" data-action="tree-close"></div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

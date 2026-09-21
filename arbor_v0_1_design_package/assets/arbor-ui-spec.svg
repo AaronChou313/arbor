@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <rect width="1600" height="980" fill="#f3f4f6"/>
+  <style>
+    .title{font:700 26px Inter,Arial;fill:#111}
+    .sub{font:500 13px Inter,Arial;fill:#6b7280}
+    .text{font:500 12px Inter,Arial;fill:#111}
+    .muted{font:500 11px Inter,Arial;fill:#777}
+    .small{font:600 10px Inter,Arial;fill:#888}
+    .blue{fill:#2563eb}
+  </style>
+
+  <text x="70" y="58" class="title">Arbor · v0.1 UI Direction</text>
+  <text x="70" y="83" class="sub">Chat-first learning interface with branchable knowledge sections.</text>
+
+  <!-- Screen 1 -->
+  <g transform="translate(70,120)">
+    <rect x="0" y="0" width="700" height="360" rx="18" fill="#fff" stroke="#dcdcdc"/>
+    <rect x="0" y="0" width="160" height="360" rx="18" fill="#f7f7f8"/>
+    <rect x="159" y="0" width="1" height="360" fill="#e5e5e5"/>
+    <text x="18" y="30" class="text" font-weight="700">Arbor</text>
+    <rect x="12" y="46" width="136" height="30" rx="8" fill="#efefef"/>
+    <text x="24" y="65" class="text">＋ New chat</text>
+    <text x="18" y="100" class="small">TODAY</text>
+    <rect x="12" y="110" width="136" height="28" rx="8" fill="#ededed"/>
+    <text x="22" y="128" class="text">最小二乘法</text>
+    <text x="18" y="335" class="text">⚙ Settings</text>
+
+    <text x="185" y="30" class="small">CURRENT CONVERSATION</text>
+    <text x="185" y="50" class="text">最小二乘法</text>
+    <text x="650" y="40" class="text">Tree</text>
+
+    <text x="205" y="95" class="small">YOU</text>
+    <text x="205" y="118" class="text">最小二乘法有哪些类别？</text>
+
+    <text x="205" y="160" class="small">ARBOR</text>
+    <text x="205" y="184" class="text">最小二乘法可以按误差假设和模型形式分成几类。</text>
+
+    <rect x="195" y="203" width="535" height="46" rx="10" fill="#fff" stroke="#fff"/>
+    <text x="207" y="224" class="text" font-weight="700">普通最小二乘法 OLS</text>
+    <text x="207" y="242" class="muted">自变量已知，最小化残差平方和。</text>
+
+    <rect x="195" y="253" width="535" height="52" rx="10" fill="#eff6ff" stroke="#bfd3ff"/>
+    <text x="207" y="275" class="text" font-weight="700">总最小二乘法 TLS</text>
+    <text x="707" y="275" class="blue">↗</text>
+    <text x="207" y="294" class="muted">自变量和因变量都可能带误差。</text>
+
+    <rect x="250" y="318" width="420" height="30" rx="15" fill="#fff" stroke="#cfcfcf"/>
+    <rect x="260" y="324" width="130" height="18" rx="9" fill="#eff6ff"/>
+    <text x="270" y="337" class="small" fill="#2563eb">基于：总最小二乘</text>
+    <text x="408" y="338" class="muted">Ask anything...</text>
+  </g>
+
+  <text x="70" y="510" class="sub">01 · Main chat — article-like sections become optional branch anchors.</text>
+
+  <!-- Screen 2 -->
+  <g transform="translate(830,120)">
+    <rect x="0" y="0" width="700" height="360" rx="18" fill="#fff" stroke="#dcdcdc"/>
+    <rect x="0" y="0" width="160" height="360" rx="18" fill="#f7f7f8"/>
+    <rect x="159" y="0" width="1" height="360" fill="#e5e5e5"/>
+    <text x="18" y="30" class="text" font-weight="700">Arbor</text>
+    <text x="185" y="30" class="small">CURRENT CONVERSATION</text>
+    <text x="185" y="50" class="text">最小二乘法</text>
+    <text x="205" y="96" class="small">YOU</text>
+    <text x="205" y="117" class="text">TLS 具体是怎么求解的？</text>
+    <text x="205" y="160" class="small">ARBOR</text>
+    <text x="205" y="183" class="text">TLS 的经典求法可以理解为最小修正问题……</text>
+
+    <rect x="420" y="0" width="280" height="360" fill="#fff" stroke="#ddd"/>
+    <text x="440" y="30" class="small">CONVERSATION</text>
+    <text x="440" y="50" class="text" font-weight="700">Knowledge tree</text>
+    <line x1="458" y1="86" x2="458" y2="256" stroke="#ddd"/>
+    <circle cx="458" cy="88" r="4" fill="#999"/>
+    <text x="474" y="92" class="text">最小二乘法有哪些类别？</text>
+    <circle cx="474" cy="132" r="4" fill="#2563eb"/>
+    <rect x="466" y="114" width="205" height="34" rx="8" fill="#eff6ff"/>
+    <text x="486" y="135" class="text" fill="#2563eb">TLS 具体怎么求解？</text>
+    <circle cx="490" cy="178" r="4" fill="#aaa"/>
+    <text x="506" y="182" class="text">SVD 是什么？</text>
+    <circle cx="490" cy="218" r="4" fill="#aaa"/>
+    <text x="506" y="222" class="text">最小修正的几何意义</text>
+    <circle cx="474" cy="260" r="4" fill="#aaa"/>
+    <text x="490" y="264" class="text">非线性最小二乘怎么迭代？</text>
+  </g>
+
+  <text x="830" y="510" class="sub">02 · Tree drawer — navigation, not a separate canvas workspace.</text>
+
+  <!-- Screen 3 -->
+  <g transform="translate(210,580)">
+    <rect x="0" y="0" width="1180" height="325" rx="18" fill="#fff" stroke="#dcdcdc"/>
+    <rect x="0" y="0" width="190" height="325" rx="18" fill="#f7f7f8"/>
+    <rect x="189" y="0" width="1" height="325" fill="#e5e5e5"/>
+    <text x="20" y="32" class="text" font-weight="700">Arbor</text>
+    <text x="20" y="295" class="text">⚙ Settings</text>
+
+    <text x="225" y="38" class="small">ARBOR</text>
+    <text x="225" y="65" class="title" font-size="22">Settings</text>
+
+    <text x="225" y="112" class="text" font-weight="700">Providers</text>
+    <rect x="225" y="128" width="770" height="48" rx="10" fill="#fff" stroke="#ddd"/>
+    <text x="244" y="150" class="text" font-weight="700">Claude</text>
+    <text x="244" y="165" class="small">Anthropic · claude-sonnet</text>
+    <text x="928" y="156" class="blue">Active</text>
+
+    <rect x="225" y="190" width="770" height="98" rx="12" fill="#f7f7f8"/>
+    <text x="242" y="212" class="small">NAME</text>
+    <rect x="242" y="220" width="210" height="32" rx="7" fill="#fff" stroke="#d8d8d8"/>
+    <text x="252" y="240" class="text">Claude</text>
+    <text x="470" y="212" class="small">PROTOCOL</text>
+    <rect x="470" y="220" width="210" height="32" rx="7" fill="#fff" stroke="#d8d8d8"/>
+    <text x="480" y="240" class="text">Anthropic</text>
+    <text x="698" y="212" class="small">MODEL</text>
+    <rect x="698" y="220" width="280" height="32" rx="7" fill="#fff" stroke="#d8d8d8"/>
+    <text x="708" y="240" class="text">claude-sonnet</text>
+
+    <text x="1030" y="112" class="text" font-weight="700">Response</text>
+    <text x="1030" y="142" class="small">DETAIL</text>
+    <rect x="1030" y="150" width="125" height="32" rx="7" fill="#fff" stroke="#d8d8d8"/>
+    <text x="1040" y="170" class="text">Balanced</text>
+    <text x="1030" y="205" class="small">APPEARANCE</text>
+    <rect x="1030" y="215" width="125" height="32" rx="7" fill="#f3f3f3" stroke="#ddd"/>
+    <text x="1040" y="235" class="text">Light</text>
+  </g>
+
+  <text x="210" y="935" class="sub">03 · Settings — provider setup stays utilitarian and compact.</text>
+</svg>
