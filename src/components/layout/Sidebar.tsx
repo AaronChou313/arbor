@@ -4,7 +4,7 @@ import { useAppStore } from "../../app/store";
 import { useAppData } from "../../hooks/useAppData";
 import { conversationRepo } from "../../lib/db/repositories";
 import { useI18n } from "../../i18n";
-import arborLogo from "../../../assets/images/Arbor.svg";
+import arborLogo from "../../../assets/images/Arbor_Title.svg";
 
 type Props = { open: boolean; onClose: () => void };
 
@@ -81,8 +81,7 @@ export function Sidebar({ open, onClose }: Props) {
     <aside className={`sidebar ${open ? "open" : ""}`}>
       <div className="brand-row">
         <button className="brand" onClick={newChat}>
-          <span className="brand-mark" aria-hidden><img src={arborLogo} alt="" /></span>
-          <span>Arbor</span>
+          <span className="brand-wordmark-crop"><img className="brand-wordmark" src={arborLogo} alt="Arbor" /></span>
         </button>
         <button className="icon-button mobile-only" onClick={onClose} aria-label={t("closeNavigation")}>×</button>
       </div>
