@@ -1,52 +1,78 @@
 import type { AnswerSection, StructuredAnswer } from "../../types/domain";
 
-function stripFence(value: string): string {
-  const match = value.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return match?.[1] ?? value.trim();
+const h2Pattern = /^ {0,3}##(?!#)\s+(.+?)\s*#*\s*$/;
+const fencePattern = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+
+function sectionId(title: string, index: number, used: Set<string>): string {
+  const slug = title
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  const base = `section-${slug || index + 1}`;
+  let id = base;
+  let suffix = 2;
+  while (used.has(id)) id = `${base}-${suffix++}`;
+  used.add(id);
+  return id;
 }
 
-function extractObject(value: string): string {
-  const clean = stripFence(value);
-  const start = clean.indexOf("{");
-  const end = clean.lastIndexOf("}");
-  return start >= 0 && end > start ? clean.slice(start, end + 1) : clean;
+export function looksLikeLegacyProtocol(rawText: string): boolean {
+  const trimmed = rawText.trimStart();
+  return (
+    (trimmed.startsWith("{") || trimmed.startsWith("[")) &&
+    /["'](?:sections|intro|outro)["']\s*:/.test(trimmed.slice(0, 1200))
+  );
 }
 
-export function parseStructuredAnswer(rawText: string): StructuredAnswer | null {
-  try {
-    const parsed: unknown = JSON.parse(extractObject(rawText));
-    if (!parsed || typeof parsed !== "object") return null;
-    const candidate = parsed as Record<string, unknown>;
-    if (!Array.isArray(candidate.sections) || candidate.sections.length === 0) return null;
-
-    const used = new Set<string>();
-    const sections: AnswerSection[] = candidate.sections.map((value, index) => {
-      if (!value || typeof value !== "object") throw new Error("Invalid section");
-      const section = value as Record<string, unknown>;
-      if (typeof section.title !== "string" || typeof section.content !== "string") {
-        throw new Error("Invalid section fields");
-      }
-      const requested = typeof section.id === "string" && section.id.trim()
-        ? section.id.trim()
-        : `section-${index + 1}`;
-      let id = requested;
-      let suffix = 2;
-      while (used.has(id)) id = `${requested}-${suffix++}`;
-      used.add(id);
-      return { id, title: section.title.trim(), content: section.content.trim() };
-    });
-
-    return {
-      rawText,
-      intro: typeof candidate.intro === "string" ? candidate.intro.trim() : undefined,
-      sections,
-      outro: typeof candidate.outro === "string" ? candidate.outro.trim() : undefined,
-    };
-  } catch {
-    return null;
+export function parseMarkdownAnswer(rawText: string): StructuredAnswer {
+  if (looksLikeLegacyProtocol(rawText)) {
+    return { rawText: "", sections: [], fallbackReason: "protocol" };
   }
-}
 
-export function fallbackAnswer(rawText: string): StructuredAnswer {
-  return { rawText, sections: [] };
+  const lines = rawText.replace(/\r\n?/g, "\n").split("\n");
+  const intro: string[] = [];
+  const parsed: Array<{ title: string; content: string[] }> = [];
+  let current: { title: string; content: string[] } | undefined;
+  let fence: { character: "`" | "~"; length: number } | undefined;
+
+  for (const line of lines) {
+    const fenceMatch = line.match(fencePattern);
+    if (fenceMatch) {
+      const marker = fenceMatch[1];
+      const character = marker[0] as "`" | "~";
+      if (!fence) fence = { character, length: marker.length };
+      else if (fence.character === character && marker.length >= fence.length && !fenceMatch[2].trim()) {
+        fence = undefined;
+      }
+      (current?.content ?? intro).push(line);
+      continue;
+    }
+
+    const heading = !fence ? line.match(h2Pattern) : null;
+    if (heading) {
+      current = { title: heading[1].trim(), content: [] };
+      parsed.push(current);
+      continue;
+    }
+    (current?.content ?? intro).push(line);
+  }
+
+  if (!parsed.length) {
+    return { rawText, sections: [], fallbackReason: "unsectioned" };
+  }
+
+  const used = new Set<string>();
+  const sections: AnswerSection[] = parsed.map((section, index) => ({
+    id: sectionId(section.title, index, used),
+    title: section.title,
+    content: section.content.join("\n").trim(),
+  }));
+
+  return {
+    rawText,
+    intro: intro.join("\n").trim() || undefined,
+    sections,
+  };
 }

@@ -1,4 +1,4 @@
-import type { Conversation, ConversationNode } from "../../types/domain";
+import { DEFAULT_PREFERENCES, type Conversation, type ConversationNode } from "../../types/domain";
 import { clearDatabase } from "../db/database";
 import { conversationRepo, nodeRepo, preferencesRepo, providerRepo } from "../db/repositories";
 import { createId } from "../utils/id";
@@ -40,7 +40,7 @@ export async function restoreBackup(value: unknown): Promise<void> {
   await Promise.all(value.conversations.map((item) => conversationRepo.put(item)));
   await Promise.all(value.nodes.map((item) => nodeRepo.put(item)));
   await Promise.all(value.providers.map((item) => providerRepo.put(item)));
-  await preferencesRepo.put({ ...value.preferences, id: "preferences" });
+  await preferencesRepo.put({ ...DEFAULT_PREFERENCES, ...value.preferences, id: "preferences" });
 }
 
 export async function readJsonFile(file: File): Promise<unknown> {

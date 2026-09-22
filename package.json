@@ -11,7 +11,8 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:live": "vitest run src/lib/provider-adapters/live.test.ts && playwright test e2e/live-provider.spec.ts"
   },
   "dependencies": {
     "idb": "^8.0.3",

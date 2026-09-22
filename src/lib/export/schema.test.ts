@@ -18,6 +18,7 @@ describe("import schema validation", () => {
     math: "auto",
     userSystemPrompt: "",
     theme: "system",
+    language: "auto",
   };
 
   it("accepts the v1 conversation envelope", () => {

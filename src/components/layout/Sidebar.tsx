@@ -3,11 +3,13 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAppStore } from "../../app/store";
 import { useAppData } from "../../hooks/useAppData";
 import { conversationRepo } from "../../lib/db/repositories";
+import { useI18n } from "../../i18n";
 
 type Props = { open: boolean; onClose: () => void };
 
 export function Sidebar({ open, onClose }: Props) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { conversations } = useAppData();
   const activeId = useAppStore((state) => state.activeConversationId);
   const setActiveId = useAppStore((state) => state.setActiveConversationId);
@@ -31,7 +33,7 @@ export function Sidebar({ open, onClose }: Props) {
   };
 
   const rename = async (id: string, title: string) => {
-    const next = window.prompt("Rename conversation", title)?.trim();
+    const next = window.prompt(t("renameConversation"), title)?.trim();
     if (!next) return;
     const conversation = await conversationRepo.get(id);
     if (conversation) await conversationRepo.put({ ...conversation, title: next, updatedAt: Date.now() });
@@ -40,7 +42,7 @@ export function Sidebar({ open, onClose }: Props) {
   };
 
   const remove = async (id: string) => {
-    if (!window.confirm("Delete this conversation and all of its branches?")) return;
+    if (!window.confirm(t("deleteConversationConfirm"))) return;
     await conversationRepo.delete(id);
     if (activeId === id) setActiveId(null);
     setMenuId(null);
@@ -58,15 +60,15 @@ export function Sidebar({ open, onClose }: Props) {
             </button>
             <button
               className="history-more"
-              aria-label={`Actions for ${item.title}`}
+                aria-label={t("actionsFor", { title: item.title })}
               onClick={() => setMenuId(menuId === item.id ? null : item.id)}
             >
               ···
             </button>
             {menuId === item.id && (
               <div className="history-menu">
-                <button onClick={() => void rename(item.id, item.title)}>Rename</button>
-                <button className="danger-text" onClick={() => void remove(item.id)}>Delete</button>
+                <button onClick={() => void rename(item.id, item.title)}>{t("rename")}</button>
+                <button className="danger-text" onClick={() => void remove(item.id)}>{t("delete")}</button>
               </div>
             )}
           </div>
@@ -78,15 +80,15 @@ export function Sidebar({ open, onClose }: Props) {
     <aside className={`sidebar ${open ? "open" : ""}`}>
       <div className="brand-row">
         <button className="brand" onClick={newChat}>Arbor</button>
-        <button className="icon-button mobile-only" onClick={onClose} aria-label="Close navigation">×</button>
+        <button className="icon-button mobile-only" onClick={onClose} aria-label={t("closeNavigation")}>×</button>
       </div>
-      <button className="new-chat" onClick={newChat}><span aria-hidden>＋</span> New chat</button>
+      <button className="new-chat" onClick={newChat}><span aria-hidden>＋</span> {t("newChat")}</button>
       <div className="history-list">
-        {group("Today", today)}
-        {group("Previous", previous)}
+        {group(t("today"), today)}
+        {group(t("previous"), previous)}
       </div>
       <NavLink className={({ isActive }) => `settings-entry ${isActive ? "active" : ""}`} to="/settings" onClick={onClose}>
-        <span aria-hidden>⚙</span> Settings
+        <span aria-hidden>⚙</span> {t("settings")}
       </NavLink>
     </aside>
   );

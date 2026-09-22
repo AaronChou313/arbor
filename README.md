@@ -25,6 +25,20 @@ npm run build
 
 The first E2E run may require `npx playwright install chromium`.
 
+### Optional live provider checks
+
+The automated suite uses mock responses by default. To run the same adapter and browser learning flow against a real provider, set these environment variables locally:
+
+```bash
+export ARBOR_LIVE_PROTOCOL=anthropic
+export ARBOR_LIVE_BASE_URL=https://provider.example.com
+export ARBOR_LIVE_API_KEY=your-session-only-key
+export ARBOR_LIVE_MODEL=your-model
+npm run test:live
+```
+
+The live tests skip automatically when any variable is missing. They do not print response bodies or credentials, and Playwright tracing, screenshots, and video are disabled for the live test. Keep credentials in an ignored `*.local` file or your shell environment; never commit them.
+
 ## Provider configuration
 
 Open **Settings → Providers**, add a provider, and choose one of these protocols:
@@ -34,6 +48,8 @@ Open **Settings → Providers**, add a provider, and choose one of these protoco
 - OpenAI-compatible Chat Completions (`/v1/chat/completions`)
 
 Enter a name, API root URL, API key, and model. Arbor accepts a service root, a URL ending in `/v1`, or the complete protocol endpoint. Use **Test connection** before saving, then mark the provider active.
+
+Model answers use normal Markdown. Text before the first `##` is the introduction, and each top-level `##` becomes a clickable learning section; lower headings remain inside that section. LaTeX is rendered directly without a JSON response wrapper.
 
 By default, API keys are session-only. Enabling **Remember API key on this device** stores the key in IndexedDB. Full backups omit keys unless you explicitly opt in.
 
@@ -58,3 +74,5 @@ The production route is `/#/`; settings are at `/#/settings`.
 Conversations and nodes are stored separately. Each node carries a `parentNodeId`; Arbor reconstructs only the root-to-current path for display and model context. If a child was created from an answer section, only that selected parent section is included in the next context instead of its sibling sections.
 
 Single conversations and full local backups can be exported as schema-versioned JSON from Settings.
+
+The interface supports Auto, Simplified Chinese, and English. Auto follows the browser language the first time Arbor is opened; changing the interface language never translates conversation content.

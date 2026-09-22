@@ -6,7 +6,7 @@ import { Composer } from "../../components/chat/Composer";
 import { Markdown } from "../../components/common/Markdown";
 import { TreeDrawer } from "../../components/tree/TreeDrawer";
 import { buildSystemPrompt } from "../../features/generation/systemPrompt";
-import { fallbackAnswer, parseStructuredAnswer } from "../../features/structured-answer/parser";
+import { looksLikeLegacyProtocol, parseMarkdownAnswer } from "../../features/structured-answer/parser";
 import { useAppData } from "../../hooks/useAppData";
 import { buildContext } from "../../lib/context/buildContext";
 import { buildPath } from "../../lib/context/buildPath";
@@ -15,9 +15,11 @@ import { getProviderAdapter } from "../../lib/provider-adapters";
 import { AppError, mapFetchError } from "../../lib/provider-adapters/errors";
 import { createId, truncateTitle } from "../../lib/utils/id";
 import type { Conversation, ConversationNode } from "../../types/domain";
+import { useI18n } from "../../i18n";
 
 export function ChatPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { providers, preferences } = useAppData();
   const activeConversationId = useAppStore((state) => state.activeConversationId);
   const setActiveConversationId = useAppStore((state) => state.setActiveConversationId);
@@ -111,15 +113,21 @@ export function ChatPage() {
         })) {
           if (event.type !== "text-delta") continue;
           rawText += event.text;
-          node = { ...node, assistant: { rawText, sections: [] } };
+          node = {
+            ...node,
+            assistant: {
+              rawText,
+              sections: [],
+              fallbackReason: looksLikeLegacyProtocol(rawText) ? "protocol" : undefined,
+            },
+          };
           replaceNode(node);
         }
-        const parsed = parseStructuredAnswer(rawText);
         node = {
           ...node,
-          assistant: parsed ?? fallbackAnswer(rawText),
+          assistant: parseMarkdownAnswer(rawText),
           status: "done",
-          error: parsed ? undefined : "Response format could not be parsed; showing the original response.",
+          error: undefined,
         };
         replaceNode(node);
         await nodeRepo.put(node);
@@ -129,7 +137,7 @@ export function ChatPage() {
         node = {
           ...node,
           status: aborted ? "aborted" : "error",
-          error: mapped.message,
+          error: mapped.code,
         };
         replaceNode(node);
         await nodeRepo.put(node);
@@ -145,7 +153,7 @@ export function ChatPage() {
     const message = draft.trim();
     if (!message || generating) return;
     if (!activeProvider) {
-      if (window.confirm("Configure a provider before sending a message. Open Settings?")) navigate("/settings");
+      if (window.confirm(t("configureProviderConfirm"))) navigate("/settings");
       return;
     }
 
@@ -224,14 +232,14 @@ export function ChatPage() {
   return (
     <section className="chat-page">
       <header className="chat-header">
-        <button className="icon-button mobile-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation">☰</button>
+        <button className="icon-button mobile-menu-button" onClick={() => setSidebarOpen(true)} aria-label={t("openNavigation")}>☰</button>
         <div className="chat-heading">
-          <div className="eyebrow">Current conversation</div>
-          <div className="chat-title">{conversation?.title ?? "New chat"}</div>
+          <div className="eyebrow">{t("currentConversation")}</div>
+          <div className="chat-title">{conversation?.title ?? t("newChat")}</div>
         </div>
         <div className="header-actions">
-          <button className="text-button" onClick={() => setTreeOpen(true)} disabled={!nodes.length}>Tree</button>
-          <button className="icon-button" onClick={() => void toggleTheme()} title="Toggle theme" aria-label="Toggle theme">◐</button>
+          <button className="text-button" onClick={() => setTreeOpen(true)} disabled={!nodes.length}>{t("tree")}</button>
+          <button className="icon-button" onClick={() => void toggleTheme()} title={t("toggleTheme")} aria-label={t("toggleTheme")}>◐</button>
         </div>
       </header>
 
@@ -239,12 +247,12 @@ export function ChatPage() {
         <div className="messages">
           {!loading && path.length === 0 && (
             <div className="empty-chat">
-              <p>Ask anything</p>
-              <span>{activeProvider ? `${activeProvider.name} · ${activeProvider.model}` : "Configure a provider in Settings"}</span>
+              <p>{t("askAnything")}</p>
+              <span>{activeProvider ? `${activeProvider.name} · ${activeProvider.model}` : t("configureProviderShort")}</span>
             </div>
           )}
           {path.length >= 3 && (
-            <nav className="breadcrumb" aria-label="Conversation path">
+            <nav className="breadcrumb" aria-label={t("conversationPath")}>
               {path.map((node) => <span key={node.id}>{truncateTitle(node.userMessage, 22)}</span>)}
             </nav>
           )}
@@ -253,7 +261,7 @@ export function ChatPage() {
             return (
               <div key={node.id}>
                 <article className={`message user-message ${from ? "branch-message" : ""}`}>
-                  <div className="message-role">You{from ? ` · from ${from}` : ""}</div>
+                  <div className="message-role">{t("you")}{from ? ` · ${t("from", { title: from })}` : ""}</div>
                   <div className="message-body"><Markdown>{node.userMessage}</Markdown></div>
                 </article>
                 <AssistantAnswer

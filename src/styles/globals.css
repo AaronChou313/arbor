@@ -183,6 +183,11 @@ textarea { resize: vertical; line-height: 1.55; }
 .segmented { width: fit-content; padding: 3px; display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .segmented button { padding: 7px 12px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; text-transform: capitalize; }
 .segmented button.active { background: var(--hover); font-weight: 680; }
+.appearance-controls { display: grid; gap: 18px; }
+.control-label { display: block; margin-bottom: 7px; color: var(--text-secondary); font-size: 12px; }
+.language-control { display: flex; flex-direction: column; gap: 6px; color: var(--text-secondary); font-size: 12px; }
+.language-control select { max-width: 240px; }
+.protocol-fallback { margin: 0; color: var(--text-secondary); }
 .data-actions { display: grid; gap: 12px; }
 .data-row { padding-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--border); }
 .data-row > div { display: flex; flex-direction: column; gap: 4px; }

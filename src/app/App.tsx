@@ -7,7 +7,7 @@ const SettingsPage = lazy(() => import("../pages/SettingsPage/SettingsPage").the
 
 export function App() {
   return (
-    <Suspense fallback={<div className="route-loading">Loading Arbor…</div>}>
+    <Suspense fallback={<div className="route-loading">Arbor</div>}>
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<ChatPage />} />

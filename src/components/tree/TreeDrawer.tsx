@@ -1,4 +1,5 @@
 import type { ConversationNode } from "../../types/domain";
+import { useI18n } from "../../i18n";
 
 type Props = {
   open: boolean;
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export function TreeDrawer({ open, nodes, currentNodeId, pathIds, onClose, onSelect }: Props) {
+  const { t } = useI18n();
   const children = new Map<string | null, ConversationNode[]>();
   [...nodes].sort((a, b) => a.createdAt - b.createdAt).forEach((node) => {
     const list = children.get(node.parentNodeId) ?? [];
@@ -35,14 +37,14 @@ export function TreeDrawer({ open, nodes, currentNodeId, pathIds, onClose, onSel
     <>
       <aside className={`tree-drawer ${open ? "open" : ""}`} aria-hidden={!open}>
         <div className="tree-header">
-          <div><div className="eyebrow">Conversation</div><strong>Knowledge tree</strong></div>
-          <button className="icon-button" onClick={onClose} aria-label="Close tree">×</button>
+          <div><div className="eyebrow">{t("conversation")}</div><strong>{t("knowledgeTree")}</strong></div>
+          <button className="icon-button" onClick={onClose} aria-label={t("closeTree")}>×</button>
         </div>
         <div className="tree-content">
-          {nodes.length ? renderBranch(null) : <p className="tree-empty">This conversation has no branches yet.</p>}
+          {nodes.length ? renderBranch(null) : <p className="tree-empty">{t("treeEmpty")}</p>}
         </div>
       </aside>
-      <button className={`tree-backdrop ${open ? "open" : ""}`} onClick={onClose} aria-label="Close tree" />
+      <button className={`tree-backdrop ${open ? "open" : ""}`} onClick={onClose} aria-label={t("closeTree")} />
     </>
   );
 }

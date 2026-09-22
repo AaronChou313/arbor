@@ -26,6 +26,7 @@ export type StructuredAnswer = {
   intro?: string;
   sections: AnswerSection[];
   outro?: string;
+  fallbackReason?: "unsectioned" | "protocol";
 };
 
 export type NodeStatus = "pending" | "streaming" | "done" | "error" | "aborted";
@@ -56,6 +57,7 @@ export type DetailLevel = "concise" | "balanced" | "detailed";
 export type SectionDensity = "low" | "medium" | "high";
 export type MathPreference = "auto" | "latex";
 export type ThemePreference = "system" | "light" | "dark";
+export type LanguagePreference = "auto" | "zh-CN" | "en-US";
 
 export type Preferences = {
   id: "preferences";
@@ -65,6 +67,7 @@ export type Preferences = {
   math: MathPreference;
   userSystemPrompt: string;
   theme: ThemePreference;
+  language: LanguagePreference;
 };
 
 export type CanonicalMessage = {
@@ -98,4 +101,5 @@ export const DEFAULT_PREFERENCES: Preferences = {
   math: "auto",
   userSystemPrompt: "",
   theme: "system",
+  language: "auto",
 };

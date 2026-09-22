@@ -79,7 +79,8 @@ function isPreferences(value: unknown): value is Preferences {
     ["low", "medium", "high"].includes(String(value.sectionDensity)) &&
     ["auto", "latex"].includes(String(value.math)) &&
     typeof value.userSystemPrompt === "string" &&
-    ["system", "light", "dark"].includes(String(value.theme))
+    ["system", "light", "dark"].includes(String(value.theme)) &&
+    (value.language === undefined || ["auto", "zh-CN", "en-US"].includes(String(value.language)))
   );
 }
 

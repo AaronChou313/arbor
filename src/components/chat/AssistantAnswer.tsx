@@ -1,6 +1,7 @@
 import type { ConversationNode } from "../../types/domain";
 import type { SelectedAnchor } from "../../app/store";
 import { Markdown } from "../common/Markdown";
+import { providerErrorKey, useI18n } from "../../i18n";
 
 type Props = {
   node: ConversationNode;
@@ -10,16 +11,18 @@ type Props = {
 };
 
 export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry }: Props) {
+  const { t } = useI18n();
   const answer = node.assistant;
   const isStreaming = node.status === "pending" || node.status === "streaming";
+  const errorMessage = node.error ? t(providerErrorKey(node.error)) : undefined;
 
   if ((node.status === "error" || node.status === "aborted") && !answer?.rawText) {
     return (
       <article className="message assistant-message">
         <div className="message-role">Arbor</div>
         <div className="generation-error">
-          <p>{node.error || (node.status === "aborted" ? "Generation was stopped." : "Generation failed.")}</p>
-          <button className="secondary-button" onClick={onRetry}>Retry</button>
+          <p>{errorMessage || (node.status === "aborted" ? t("generationStopped") : t("generationFailed"))}</p>
+          <button className="secondary-button" onClick={onRetry}>{t("retry")}</button>
         </div>
       </article>
     );
@@ -30,7 +33,9 @@ export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry 
       <div className="message-role">Arbor</div>
       {isStreaming || !answer?.sections.length ? (
         <>
-          {answer?.rawText ? <Markdown>{answer.rawText}</Markdown> : <div className="typing-indicator"><span /><span /><span /></div>}
+          {answer?.fallbackReason === "protocol" ? (
+            <p className="protocol-fallback">{t("responseProtocolError")}</p>
+          ) : answer?.rawText ? <Markdown>{answer.rawText}</Markdown> : <div className="typing-indicator"><span /><span /><span /></div>}
           {isStreaming && answer?.rawText && <span className="stream-cursor" />}
         </>
       ) : (
@@ -53,10 +58,10 @@ export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry 
           {answer.outro && <div className="assistant-outro"><Markdown>{answer.outro}</Markdown></div>}
         </>
       )}
-      {node.error && (
+      {errorMessage && (
         <div className="inline-generation-state">
-          <span>{node.error}</span>
-          {node.status !== "done" && <button className="text-button" onClick={onRetry}>Retry</button>}
+          <span>{errorMessage}</span>
+          {node.status !== "done" && <button className="text-button" onClick={onRetry}>{t("retry")}</button>}
         </div>
       )}
     </article>

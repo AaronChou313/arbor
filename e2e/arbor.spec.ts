@@ -15,14 +15,17 @@ async function mockProvider(page: Page) {
       return;
     }
 
-    const answer = JSON.stringify({
-      intro: "Least squares estimates parameters by minimizing squared residuals.",
-      sections: [
-        { id: "idea", title: "Core idea", content: "Choose parameters that minimize the sum of squared residuals." },
-        { id: "types", title: "Common variants", content: "OLS, WLS, and TLS use different error assumptions." },
-      ],
-      outro: "Choose a section to continue.",
-    });
+    const answer = `Least squares estimates parameters by minimizing squared residuals.
+
+## Core idea
+
+Choose parameters that minimize the sum of squared residuals $\\sum_i r_i^2$.
+
+## Common variants
+
+OLS, WLS, and TLS use different error assumptions.
+
+Choose a section to continue.`;
     const events = [
       `event: response.output_text.delta\ndata: ${JSON.stringify({ type: "response.output_text.delta", delta: answer.slice(0, 90) })}`,
       `event: response.output_text.delta\ndata: ${JSON.stringify({ type: "response.output_text.delta", delta: answer.slice(90) })}`,
@@ -89,6 +92,17 @@ test("creates anchored sibling branches and restores the current path", async ({
 test("persists appearance and exports a schema-versioned conversation", async ({ page }) => {
   await mockProvider(page);
   await configureProvider(page);
+  await page.getByLabel("Language").selectOption("zh-CN");
+  await expect(page.getByRole("heading", { name: "设置" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "模型服务" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "回答" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "系统提示词" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "外观" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "数据" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /新建对话/ })).toBeVisible();
+  await page.getByLabel("界面语言").selectOption("en-US");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Response" })).toBeVisible();
   await page.getByRole("button", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByRole("button", { name: "Back to chat" }).click();

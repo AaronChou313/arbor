@@ -56,10 +56,8 @@ export const providerRepo = {
 
 export const preferencesRepo = {
   async get(): Promise<Preferences> {
-    return (
-      (await (await getDatabase()).get("preferences", "preferences")) ??
-      DEFAULT_PREFERENCES
-    );
+    const stored = await (await getDatabase()).get("preferences", "preferences");
+    return { ...DEFAULT_PREFERENCES, ...stored, id: "preferences" };
   },
   async put(value: Preferences): Promise<void> {
     await (await getDatabase()).put("preferences", value);
