@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ConversationNode } from "../../types/domain";
 import { useI18n } from "../../i18n";
 
@@ -8,10 +9,12 @@ type Props = {
   pathIds: Set<string>;
   onClose: () => void;
   onSelect: (id: string) => void;
+  onRename: (id: string, title: string) => void;
 };
 
-export function TreeDrawer({ open, nodes, currentNodeId, pathIds, onClose, onSelect }: Props) {
+export function TreeDrawer({ open, nodes, currentNodeId, pathIds, onClose, onSelect, onRename }: Props) {
   const { t } = useI18n();
+  const [menuId, setMenuId] = useState<string | null>(null);
   const children = new Map<string | null, ConversationNode[]>();
   [...nodes].sort((a, b) => a.createdAt - b.createdAt).forEach((node) => {
     const list = children.get(node.parentNodeId) ?? [];
@@ -20,18 +23,39 @@ export function TreeDrawer({ open, nodes, currentNodeId, pathIds, onClose, onSel
   });
 
   const renderBranch = (parentId: string | null, depth = 0): React.ReactNode =>
-    (children.get(parentId) ?? []).map((node) => (
-      <div className="tree-branch" key={node.id}>
-        <button
-          className={`tree-node ${node.id === currentNodeId ? "current" : ""} ${pathIds.has(node.id) && node.id !== currentNodeId ? "ancestor" : ""}`}
-          style={{ paddingLeft: `${12 + depth * 18}px` }}
-          onClick={() => onSelect(node.id)}
-        >
-          <span className="node-dot" /><span>{node.userMessage}</span>
-        </button>
-        {renderBranch(node.id, depth + 1)}
-      </div>
-    ));
+    (children.get(parentId) ?? []).map((node) => {
+      const title = node.title?.trim() || node.userMessage;
+      const rename = () => {
+        const next = window.prompt(t("renameNode"), title)?.trim();
+        if (!next) return;
+        onRename(node.id, next);
+        setMenuId(null);
+      };
+      return (
+        <div className="tree-branch" key={node.id}>
+          <div
+            className={`tree-node ${node.id === currentNodeId ? "current" : ""} ${pathIds.has(node.id) && node.id !== currentNodeId ? "ancestor" : ""}`}
+            style={{ paddingLeft: `${8 + depth * 18}px` }}
+          >
+            <button className="tree-node-select" title={node.userMessage} onClick={() => onSelect(node.id)}>
+              <span className="node-dot" /><span>{title}</span>
+            </button>
+            <button
+              className="tree-more"
+              aria-label={t("actionsFor", { title })}
+              aria-expanded={menuId === node.id}
+              onClick={() => setMenuId(menuId === node.id ? null : node.id)}
+            >···</button>
+            {menuId === node.id && (
+              <div className="tree-menu">
+                <button onClick={rename}>{t("rename")}</button>
+              </div>
+            )}
+          </div>
+          {renderBranch(node.id, depth + 1)}
+        </div>
+      );
+    });
 
   return (
     <>

@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import type { LanguagePreference } from "../types/domain";
+import type { FinishReason, LanguagePreference, NodeStatus } from "../types/domain";
 
 const en = {
   openNavigation: "Open navigation",
@@ -13,6 +13,7 @@ const en = {
   delete: "Delete",
   actionsFor: "Actions for {title}",
   renameConversation: "Rename conversation",
+  renameNode: "Rename branch",
   deleteConversationConfirm: "Delete this conversation and all of its branches?",
   currentConversation: "Current conversation",
   tree: "Tree",
@@ -21,7 +22,7 @@ const en = {
   configureProviderShort: "Configure a provider in Settings",
   conversationPath: "Conversation path",
   you: "You",
-  from: "from {title}",
+  from: "Based on: {title}",
   retry: "Retry",
   generationStopped: "Generation was stopped.",
   generationFailed: "Generation failed.",
@@ -60,7 +61,7 @@ const en = {
   model: "Model",
   advanced: "Advanced",
   maxOutputTokens: "Max output tokens",
-  maxOutputTokensHint: "Recommended: 8192. Leave blank to use the provider default.",
+  maxOutputTokensHint: "Auto lets the provider choose. Enter a number only when you need a custom limit.",
   invalidMaxOutputTokens: "Max output tokens must be a positive whole number or blank.",
   rememberApiKey: "Remember API key on this device",
   securityNote: "Your key is sent directly to the configured model service. Browser storage is not a secure vault, and some endpoints may block browser requests with CORS.",
@@ -77,11 +78,17 @@ const en = {
   connectionSuccess: "Endpoint, authentication, and model accepted.",
   outputLimitReached: "The response reached the output length limit.",
   continueGenerating: "Continue generating",
+  continuing: "Continuing…",
+  jumpToLatest: "Jump to latest",
   usage: "Usage",
   inputTokens: "input {count}",
   outputTokens: "output {count}",
   totalTokens: "total {count}",
-  stopReason: "stop: {reason}",
+  finishLength: "Reached the output length limit.",
+  finishContentFilter: "The response was stopped by content filtering.",
+  finishToolCall: "The response paused for a tool call.",
+  finishError: "The response ended because of an error.",
+  finishUserStopped: "Stopped by you.",
   response: "Response",
   responseDescription: "Control how Arbor structures learning answers.",
   detail: "Detail",
@@ -139,6 +146,7 @@ const zh: Record<keyof typeof en, string> = {
   delete: "删除",
   actionsFor: "{title} 的操作",
   renameConversation: "重命名对话",
+  renameNode: "重命名分支",
   deleteConversationConfirm: "删除此对话及其全部分支？",
   currentConversation: "当前对话",
   tree: "对话树",
@@ -147,7 +155,7 @@ const zh: Record<keyof typeof en, string> = {
   configureProviderShort: "请先在设置中配置模型服务",
   conversationPath: "对话路径",
   you: "你",
-  from: "基于 {title}",
+  from: "基于：{title}",
   retry: "重试",
   generationStopped: "生成已停止。",
   generationFailed: "生成失败。",
@@ -186,7 +194,7 @@ const zh: Record<keyof typeof en, string> = {
   model: "模型",
   advanced: "高级设置",
   maxOutputTokens: "最大输出 Token 数",
-  maxOutputTokensHint: "建议 8192；留空则采用服务端默认值。",
+  maxOutputTokensHint: "Auto 优先采用服务端默认值；仅在需要自定义限制时填写数字。",
   invalidMaxOutputTokens: "最大输出 Token 数必须为正整数或留空。",
   rememberApiKey: "在此设备上记住 API Key",
   securityNote: "密钥会直接发送到配置的模型服务。浏览器存储并非安全保险箱，部分端点也可能通过 CORS 阻止浏览器请求。",
@@ -203,11 +211,17 @@ const zh: Record<keyof typeof en, string> = {
   connectionSuccess: "端点、身份验证和模型均已通过。",
   outputLimitReached: "回答已达到输出长度上限。",
   continueGenerating: "继续生成",
+  continuing: "正在继续生成…",
+  jumpToLatest: "回到最新内容",
   usage: "用量",
   inputTokens: "输入 {count}",
   outputTokens: "输出 {count}",
   totalTokens: "合计 {count}",
-  stopReason: "停止原因：{reason}",
+  finishLength: "已达到输出长度上限。",
+  finishContentFilter: "回答已被内容安全策略停止。",
+  finishToolCall: "回答已暂停，等待工具调用。",
+  finishError: "回答因错误而结束。",
+  finishUserStopped: "已由你停止生成。",
   response: "回答",
   responseDescription: "控制 Arbor 如何组织学习型回答。",
   detail: "详细程度",
@@ -275,6 +289,10 @@ function translator(language: ResolvedLanguage): Translate {
   };
 }
 
+export function translate(language: ResolvedLanguage, key: TranslationKey): string {
+  return translator(language)(key);
+}
+
 const defaultContext = { language: "en-US" as ResolvedLanguage, t: translator("en-US") };
 const I18nContext = createContext(defaultContext);
 
@@ -299,6 +317,20 @@ export function providerErrorKey(code?: string): TranslationKey {
     ABORTED: "errorAborted",
   };
   return (code && keys[code]) || "errorUnknown";
+}
+
+export function finishReasonKey(
+  finishReason?: FinishReason,
+  status?: NodeStatus,
+): TranslationKey | null {
+  if (status === "aborted") return "finishUserStopped";
+  const keys: Partial<Record<FinishReason, TranslationKey>> = {
+    length: "finishLength",
+    "content-filter": "finishContentFilter",
+    "tool-call": "finishToolCall",
+    error: "finishError",
+  };
+  return finishReason ? keys[finishReason] ?? null : null;
 }
 
 export function testStageKey(stage: "network" | "cors" | "auth" | "model" | "unknown"): TranslationKey {

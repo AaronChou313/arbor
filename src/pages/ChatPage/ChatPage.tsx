@@ -5,8 +5,10 @@ import { AssistantAnswer } from "../../components/chat/AssistantAnswer";
 import { Composer } from "../../components/chat/Composer";
 import { Markdown } from "../../components/common/Markdown";
 import { TreeDrawer } from "../../components/tree/TreeDrawer";
+import { CONTINUATION_INSTRUCTION, recoverInterruptedGeneration, runGenerationLoop } from "../../features/generation/continuation";
 import { buildSystemPrompt } from "../../features/generation/systemPrompt";
 import { looksLikeLegacyProtocol, parseMarkdownAnswer } from "../../features/structured-answer/parser";
+import { canAutomaticallyTitle, requestGeneratedTitle } from "../../features/titles/titleGeneration";
 import { useAppData } from "../../hooks/useAppData";
 import { buildContext } from "../../lib/context/buildContext";
 import { buildPath } from "../../lib/context/buildPath";
@@ -14,29 +16,8 @@ import { conversationRepo, nodeRepo, preferencesRepo } from "../../lib/db/reposi
 import { getProviderAdapter } from "../../lib/provider-adapters";
 import { AppError, mapFetchError } from "../../lib/provider-adapters/errors";
 import { createId, truncateTitle } from "../../lib/utils/id";
-import type { Conversation, ConversationNode, FinishReason, GenerationUsage } from "../../types/domain";
+import type { Conversation, ConversationNode } from "../../types/domain";
 import { useI18n } from "../../i18n";
-
-const continuationInstruction = `Continue the previous answer exactly where it stopped because of the output limit.
-Start on a new line, do not repeat completed material, preserve the existing language and Markdown structure, and finish the explanation.`;
-
-function latestUsage(current: GenerationUsage, event: GenerationUsage): GenerationUsage {
-  return {
-    inputTokens: event.inputTokens ?? current.inputTokens,
-    outputTokens: event.outputTokens ?? current.outputTokens,
-    totalTokens: event.totalTokens ?? current.totalTokens,
-  };
-}
-
-function accumulatedUsage(previous: GenerationUsage | undefined, current: GenerationUsage): GenerationUsage | undefined {
-  const add = (left?: number, right?: number) => right === undefined ? left : (left ?? 0) + right;
-  const result = {
-    inputTokens: add(previous?.inputTokens, current.inputTokens),
-    outputTokens: add(previous?.outputTokens, current.outputTokens),
-    totalTokens: add(previous?.totalTokens, current.totalTokens),
-  };
-  return Object.values(result).some((value) => value !== undefined) ? result : undefined;
-}
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -54,8 +35,12 @@ export function ChatPage() {
   const [nodes, setNodes] = useState<ConversationNode[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
+  const [continuingNodeId, setContinuingNodeId] = useState<string | null>(null);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const autoFollowRef = useRef(true);
+  const continuingTimerRef = useRef<number | undefined>(undefined);
 
   const activeProvider =
     providers.find((item) => item.id === preferences.activeProviderId) ?? providers[0];
@@ -77,15 +62,21 @@ export function ChatPage() {
     Promise.all([
       conversationRepo.get(activeConversationId),
       nodeRepo.list(activeConversationId),
-    ]).then(([nextConversation, nextNodes]) => {
+    ]).then(async ([nextConversation, nextNodes]) => {
       if (!current) return;
       if (!nextConversation) {
         setActiveConversationId(null);
         setConversation(null);
         setNodes([]);
       } else {
+        const recoveredNodes = abortRef.current
+          ? nextNodes
+          : nextNodes.map(recoverInterruptedGeneration);
+        const interrupted = recoveredNodes.filter((node, index) => node !== nextNodes[index]);
+        if (interrupted.length) await Promise.all(interrupted.map((node) => nodeRepo.put(node)));
+        if (!current) return;
         setConversation(nextConversation);
-        setNodes(nextNodes);
+        setNodes(recoveredNodes);
       }
       setLoading(false);
     });
@@ -94,17 +85,80 @@ export function ChatPage() {
     };
   }, [activeConversationId, setActiveConversationId]);
 
-  useEffect(() => {
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
+    autoFollowRef.current = true;
+    setShowJumpToLatest(false);
     requestAnimationFrame(() => {
-      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
     });
-  }, [path.length, nodes]);
+  }, []);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => {
+    if (autoFollowRef.current) scrollToLatest("auto");
+  }, [nodes, path.length, scrollToLatest]);
+
+  useEffect(() => {
+    autoFollowRef.current = true;
+    setShowJumpToLatest(false);
+  }, [activeConversationId]);
+
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    if (continuingTimerRef.current !== undefined) window.clearTimeout(continuingTimerRef.current);
+  }, []);
 
   const replaceNode = useCallback((next: ConversationNode) => {
     setNodes((current) => current.map((item) => (item.id === next.id ? next : item)));
   }, []);
+
+  const generateTitleInBackground = useCallback((
+    completedNode: ConversationNode,
+    anchorSectionTitle?: string,
+  ) => {
+    if (!activeProvider || !completedNode.assistant) return;
+    const provider = activeProvider;
+    const answer = completedNode.assistant;
+    void (async () => {
+      const storedNode = await nodeRepo.get(completedNode.id);
+      const storedConversation = completedNode.parentNodeId === null
+        ? await conversationRepo.get(completedNode.conversationId)
+        : undefined;
+      const shouldNameNode = canAutomaticallyTitle(storedNode?.titleSource);
+      const shouldNameConversation = canAutomaticallyTitle(storedConversation?.titleSource);
+      if (!shouldNameNode && !shouldNameConversation) return;
+
+      const title = await requestGeneratedTitle(provider, {
+        anchorSectionTitle,
+        userMessage: completedNode.userMessage,
+        answer,
+      });
+      if (!title) return;
+
+      const latestNode = await nodeRepo.get(completedNode.id);
+      if (latestNode && canAutomaticallyTitle(latestNode.titleSource)) {
+        const titledNode = { ...latestNode, title, titleSource: "ai" as const };
+        await nodeRepo.put(titledNode);
+        replaceNode(titledNode);
+      }
+
+      if (completedNode.parentNodeId === null) {
+        const latestConversation = await conversationRepo.get(completedNode.conversationId);
+        if (latestConversation && canAutomaticallyTitle(latestConversation.titleSource)) {
+          const titledConversation = {
+            ...latestConversation,
+            title,
+            titleSource: "ai" as const,
+            updatedAt: Date.now(),
+          };
+          await conversationRepo.put(titledConversation);
+          setConversation((current) => current?.id === titledConversation.id ? titledConversation : current);
+        }
+      }
+      refreshData();
+    })().catch(() => {
+      // Naming is intentionally best-effort and must never affect the completed answer.
+    });
+  }, [activeProvider, refreshData, replaceNode]);
 
   const generate = useCallback(
     async (initialNode: ConversationNode, append = false) => {
@@ -113,39 +167,66 @@ export function ChatPage() {
       const controller = new AbortController();
       abortRef.current = controller;
       const existingRawText = append ? initialNode.assistant?.rawText ?? "" : "";
-      const continuationSeparator = existingRawText && !existingRawText.endsWith("\n") ? "\n\n" : "";
-      const previousUsage = append ? initialNode.usage : undefined;
-      let requestUsage: GenerationUsage = {};
-      let continuationText = "";
-      let finishReason: FinishReason = "unknown";
-      let providerFinishReason: string | undefined;
       let node: ConversationNode = {
         ...initialNode,
-        assistant: append ? initialNode.assistant : { rawText: "", sections: [] },
+        assistant: {
+          rawText: existingRawText,
+          sections: [],
+          fallbackReason: looksLikeLegacyProtocol(existingRawText) ? "protocol" : undefined,
+        },
         status: "streaming",
         error: undefined,
         finishReason: undefined,
         providerFinishReason: undefined,
-        usage: previousUsage,
+        usage: append ? initialNode.usage : undefined,
       };
       replaceNode(node);
       await nodeRepo.put(node);
 
       try {
         const allNodes = await nodeRepo.list(node.conversationId);
-        const currentPath = buildPath(node.id, allNodes.map((item) => (item.id === node.id ? node : item)));
         const adapter = getProviderAdapter(activeProvider.protocol);
-        const messages = buildContext(currentPath);
-        if (append) messages.push({ role: "user", content: continuationInstruction });
-        for await (const event of adapter.stream(activeProvider, {
-          systemPrompt: buildSystemPrompt(preferences),
-          messages,
-          model: activeProvider.model,
+        const clearContinuingState = () => {
+          if (continuingTimerRef.current !== undefined) {
+            window.clearTimeout(continuingTimerRef.current);
+            continuingTimerRef.current = undefined;
+          }
+          setContinuingNodeId(null);
+        };
+        const result = await runGenerationLoop({
+          initialText: existingRawText,
+          initialUsage: append ? initialNode.usage : undefined,
+          continueFirstSegment: append,
           signal: controller.signal,
-        })) {
-          if (event.type === "text-delta") {
-            continuationText += event.text;
-            const rawText = `${existingRawText}${continuationSeparator}${continuationText}`;
+          streamSegment: ({ text, isContinuation, signal }) => {
+            const contextNode: ConversationNode = {
+              ...node,
+              assistant: { rawText: text, sections: [] },
+              status: "streaming",
+            };
+            const currentPath = buildPath(
+              node.id,
+              allNodes.map((item) => (item.id === node.id ? contextNode : item)),
+            );
+            const messages = buildContext(currentPath);
+            if (isContinuation) messages.push({ role: "user", content: CONTINUATION_INSTRUCTION });
+            return adapter.stream(activeProvider, {
+              systemPrompt: buildSystemPrompt(preferences),
+              messages,
+              model: activeProvider.model,
+              signal,
+            });
+          },
+          onSegmentStart: ({ isContinuation }) => {
+            clearContinuingState();
+            if (isContinuation) {
+              continuingTimerRef.current = window.setTimeout(() => {
+                if (!controller.signal.aborted) setContinuingNodeId(node.id);
+              }, 250);
+            }
+          },
+          onFirstToken: clearContinuingState,
+          onText: (rawText) => {
             node = {
               ...node,
               assistant: {
@@ -153,30 +234,62 @@ export function ChatPage() {
                 sections: [],
                 fallbackReason: looksLikeLegacyProtocol(rawText) ? "protocol" : undefined,
               },
+              status: "streaming",
             };
             replaceNode(node);
-          } else if (event.type === "usage") {
-            requestUsage = latestUsage(requestUsage, event);
-            node = { ...node, usage: accumulatedUsage(previousUsage, requestUsage) };
+          },
+          onUsage: (usage) => {
+            node = { ...node, usage };
             replaceNode(node);
-          } else {
-            finishReason = event.finishReason;
-            providerFinishReason = event.providerReason;
-          }
-        }
-        const rawText = `${existingRawText}${continuationSeparator}${continuationText}`;
+          },
+          onSegmentEnd: async ({ text, usage }) => {
+            clearContinuingState();
+            node = {
+              ...node,
+              assistant: {
+                rawText: text,
+                sections: [],
+                fallbackReason: looksLikeLegacyProtocol(text) ? "protocol" : undefined,
+              },
+              usage,
+              status: "streaming",
+            };
+            replaceNode(node);
+            await nodeRepo.put(node);
+          },
+        });
+        clearContinuingState();
+        const normallyCompleted = result.finishReason === "stop";
         node = {
           ...node,
-          assistant: parseMarkdownAnswer(rawText),
-          status: finishReason === "length" ? "truncated" : finishReason === "error" ? "error" : "done",
-          error: finishReason === "error" ? "BAD_RESPONSE" : undefined,
-          finishReason,
-          providerFinishReason,
-          usage: accumulatedUsage(previousUsage, requestUsage),
+          assistant: normallyCompleted
+            ? parseMarkdownAnswer(result.text)
+            : {
+                rawText: result.text,
+                sections: [],
+                fallbackReason: looksLikeLegacyProtocol(result.text) ? "protocol" : undefined,
+              },
+          status: result.finishReason === "length" ? "truncated" : result.finishReason === "error" ? "error" : "done",
+          error: result.finishReason === "error" ? "BAD_RESPONSE" : undefined,
+          finishReason: result.finishReason,
+          providerFinishReason: result.providerReason,
+          usage: result.usage,
         };
         replaceNode(node);
         await nodeRepo.put(node);
+        if (normallyCompleted) {
+          const parent = allNodes.find((item) => item.id === node.parentNodeId);
+          const anchorSectionTitle = node.anchorSectionId
+            ? parent?.assistant?.sections.find((section) => section.id === node.anchorSectionId)?.title
+            : undefined;
+          generateTitleInBackground(node, anchorSectionTitle);
+        }
       } catch (error) {
+        if (continuingTimerRef.current !== undefined) {
+          window.clearTimeout(continuingTimerRef.current);
+          continuingTimerRef.current = undefined;
+        }
+        setContinuingNodeId(null);
         const mapped = mapFetchError(error);
         const aborted = mapped instanceof AppError && mapped.code === "ABORTED";
         node = {
@@ -191,7 +304,7 @@ export function ChatPage() {
         refreshData();
       }
     },
-    [activeProvider, preferences, refreshData, replaceNode],
+    [activeProvider, generateTitleInBackground, preferences, refreshData, replaceNode],
   );
 
   const send = async () => {
@@ -214,6 +327,8 @@ export function ChatPage() {
       anchorQuote: selectedAnchor?.quote ?? null,
       anchorBlockId: selectedAnchor?.blockId ?? null,
       userMessage: message,
+      title: truncateTitle(message),
+      titleSource: "fallback",
       assistant: null,
       providerSnapshot: { providerId: activeProvider.id, model: activeProvider.model },
       status: "pending",
@@ -224,6 +339,7 @@ export function ChatPage() {
       : {
           id: conversationId,
           title: truncateTitle(message),
+          titleSource: "fallback",
           rootNodeId: nodeId,
           currentNodeId: nodeId,
           createdAt: now,
@@ -236,6 +352,8 @@ export function ChatPage() {
     setActiveConversationId(conversationId);
     setDraft("");
     setSelectedAnchor(null);
+    autoFollowRef.current = true;
+    setShowJumpToLatest(false);
     refreshData();
     await generate(node);
   };
@@ -247,6 +365,8 @@ export function ChatPage() {
     setConversation(next);
     setSelectedAnchor(null);
     setTreeOpen(false);
+    autoFollowRef.current = true;
+    setShowJumpToLatest(false);
     refreshData();
   };
 
@@ -264,12 +384,25 @@ export function ChatPage() {
     };
     replaceNode(next);
     await nodeRepo.put(next);
+    autoFollowRef.current = true;
+    setShowJumpToLatest(false);
     await generate(next);
   };
 
   const continueGeneration = async (node: ConversationNode) => {
     if (!activeProvider || generating || node.status !== "truncated") return;
+    autoFollowRef.current = true;
+    setShowJumpToLatest(false);
     await generate(node, true);
+  };
+
+  const renameTreeNode = async (id: string, title: string) => {
+    const stored = await nodeRepo.get(id);
+    if (!stored) return;
+    const next = { ...stored, title, titleSource: "manual" as const };
+    await nodeRepo.put(next);
+    replaceNode(next);
+    refreshData();
   };
 
   const toggleTheme = async () => {
@@ -298,7 +431,16 @@ export function ChatPage() {
         </div>
       </header>
 
-      <div className="chat-scroll" ref={scrollRef}>
+      <div
+        className="chat-scroll"
+        ref={scrollRef}
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+          autoFollowRef.current = nearBottom;
+          setShowJumpToLatest(!nearBottom);
+        }}
+      >
         <div className="messages">
           {!loading && path.length === 0 && (
             <div className="empty-chat">
@@ -316,7 +458,7 @@ export function ChatPage() {
             return (
               <div key={node.id}>
                 <article className={`message user-message ${from ? "branch-message" : ""}`}>
-                  <div className="message-role">{t("you")}{from ? ` · ${t("from", { title: from })}` : ""}</div>
+                  {from && <div className="user-anchor-label">{t("from", { title: from })}</div>}
                   <div className="message-body"><Markdown>{node.userMessage}</Markdown></div>
                 </article>
                 <AssistantAnswer
@@ -325,12 +467,19 @@ export function ChatPage() {
                   onSelectAnchor={setSelectedAnchor}
                   onRetry={() => void retry(node)}
                   onContinue={() => void continueGeneration(node)}
+                  continuing={continuingNodeId === node.id}
                 />
               </div>
             );
           })}
         </div>
       </div>
+
+      {showJumpToLatest && (
+        <button className="jump-to-latest" onClick={() => scrollToLatest()} aria-label={t("jumpToLatest")}>
+          ↓ <span>{t("jumpToLatest")}</span>
+        </button>
+      )}
 
       <Composer
         value={draft}
@@ -350,6 +499,7 @@ export function ChatPage() {
         pathIds={new Set(path.map((node) => node.id))}
         onClose={() => setTreeOpen(false)}
         onSelect={(id) => void selectTreeNode(id)}
+        onRename={(id, title) => void renameTreeNode(id, title)}
       />
     </section>
   );

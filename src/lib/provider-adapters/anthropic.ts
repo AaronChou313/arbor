@@ -6,6 +6,8 @@ import { readSse, responseError } from "./sse";
 import type { ProviderAdapter } from "./types";
 import { resolveProviderUrl } from "./urls";
 
+const ANTHROPIC_AUTO_MAX_TOKENS = 8192;
+
 function request(config: ProviderConfig, input: GenerateInput, stream: boolean): Promise<Response> {
   const key = requireProviderFields(config);
   return fetch(resolveProviderUrl(config.baseUrl, config.protocol), {
@@ -22,9 +24,7 @@ function request(config: ProviderConfig, input: GenerateInput, stream: boolean):
       messages: input.messages,
       ...(!stream
         ? { max_tokens: 1 }
-        : config.maxOutputTokens
-          ? { max_tokens: config.maxOutputTokens }
-          : {}),
+        : { max_tokens: config.maxOutputTokens ?? ANTHROPIC_AUTO_MAX_TOKENS }),
       stream,
     }),
     signal: input.signal,

@@ -33,7 +33,7 @@ function newProvider(name: string): ProviderConfig {
     apiKey: "",
     rememberApiKey: false,
     model: "",
-    maxOutputTokens: 8192,
+    maxOutputTokens: undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -222,7 +222,7 @@ export function SettingsPage() {
                     type="number"
                     min="1"
                     step="1"
-                    placeholder="8192"
+                    placeholder={t("automatic")}
                     value={draft.maxOutputTokens ?? ""}
                     onChange={(event) => setDraft({
                       ...draft,

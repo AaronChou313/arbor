@@ -50,13 +50,17 @@ describe("streaming provider metadata", () => {
   });
 
   it("reads Anthropic message_delta stop_reason and usage", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response([
-      `event: message_start\ndata: ${JSON.stringify({ type: "message_start", message: { usage: { input_tokens: 30, output_tokens: 0 } } })}`,
-      `event: content_block_delta\ndata: ${JSON.stringify({ type: "content_block_delta", delta: { type: "text_delta", text: "partial" } })}`,
-      `event: message_delta\ndata: ${JSON.stringify({ type: "message_delta", delta: { stop_reason: "max_tokens" }, usage: { output_tokens: 8192 } })}`,
-    ].join("\n\n"))));
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      expect(body.max_tokens).toBe(8192);
+      return new Response([
+        `event: message_start\ndata: ${JSON.stringify({ type: "message_start", message: { usage: { input_tokens: 30, output_tokens: 0 } } })}`,
+        `event: content_block_delta\ndata: ${JSON.stringify({ type: "content_block_delta", delta: { type: "text_delta", text: "partial" } })}`,
+        `event: message_delta\ndata: ${JSON.stringify({ type: "message_delta", delta: { stop_reason: "max_tokens" }, usage: { output_tokens: 8192 } })}`,
+      ].join("\n\n"));
+    }));
 
-    const events = await collect(anthropicAdapter, config("anthropic", 8192));
+    const events = await collect(anthropicAdapter, config("anthropic"));
     expect(events).toContainEqual({ type: "usage", outputTokens: 8192 });
     expect(events.at(-1)).toEqual({ type: "done", finishReason: "length", providerReason: "max_tokens" });
   });

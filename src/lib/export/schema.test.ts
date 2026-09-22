@@ -25,6 +25,29 @@ describe("import schema validation", () => {
     expect(isConversationExport({ schemaVersion: 1, conversation, nodes: [] })).toBe(true);
   });
 
+  it("accepts new title metadata while keeping legacy title-less nodes compatible", () => {
+    const titledConversation = { ...conversation, titleSource: "ai" };
+    const titledNode = {
+      id: "n",
+      conversationId: "c",
+      parentNodeId: null,
+      anchorSectionId: null,
+      userMessage: "Question",
+      title: "Focused topic",
+      titleSource: "manual",
+      assistant: null,
+      providerSnapshot: { providerId: "p", model: "m" },
+      status: "done",
+      createdAt: 1,
+    };
+    const legacyNode = { ...titledNode };
+    delete (legacyNode as Partial<typeof titledNode>).title;
+    delete (legacyNode as Partial<typeof titledNode>).titleSource;
+
+    expect(isConversationExport({ schemaVersion: 1, conversation: titledConversation, nodes: [titledNode] })).toBe(true);
+    expect(isConversationExport({ schemaVersion: 1, conversation, nodes: [legacyNode] })).toBe(true);
+  });
+
   it("rejects unknown versions and executable-looking non-data", () => {
     expect(isConversationExport({ schemaVersion: 2, conversation: {}, nodes: [] })).toBe(false);
     expect(isBackupExport("alert('x')")).toBe(false);

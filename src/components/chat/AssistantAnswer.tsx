@@ -1,7 +1,7 @@
 import type { ConversationNode } from "../../types/domain";
 import type { SelectedAnchor } from "../../app/store";
 import { Markdown } from "../common/Markdown";
-import { providerErrorKey, useI18n } from "../../i18n";
+import { finishReasonKey, providerErrorKey, useI18n } from "../../i18n";
 
 type Props = {
   node: ConversationNode;
@@ -9,13 +9,16 @@ type Props = {
   onSelectAnchor: (anchor: SelectedAnchor) => void;
   onRetry: () => void;
   onContinue: () => void;
+  continuing: boolean;
 };
 
-export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry, onContinue }: Props) {
+export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry, onContinue, continuing }: Props) {
   const { t } = useI18n();
   const answer = node.assistant;
   const isStreaming = node.status === "pending" || node.status === "streaming";
   const errorMessage = node.error ? t(providerErrorKey(node.error)) : undefined;
+  const specialFinishKey = finishReasonKey(node.finishReason, node.status);
+  const specialFinishMessage = specialFinishKey ? t(specialFinishKey) : undefined;
 
   if ((node.status === "error" || node.status === "aborted") && !answer?.rawText) {
     return (
@@ -36,8 +39,10 @@ export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry,
         <>
           {answer?.fallbackReason === "protocol" ? (
             <p className="protocol-fallback">{t("responseProtocolError")}</p>
-          ) : answer?.rawText ? <Markdown>{answer.rawText}</Markdown> : isStreaming ? <div className="typing-indicator"><span /><span /><span /></div> : null}
-          {isStreaming && answer?.rawText && <span className="stream-cursor" />}
+          ) : answer?.rawText ? <Markdown>{answer.rawText}</Markdown> : isStreaming && !continuing ? <div className="typing-indicator"><span /><span /><span /></div> : null}
+          {continuing ? (
+            <span className="continuing-state">{t("continuing")}<span className="continuing-dots" aria-hidden><i /><i /><i /></span></span>
+          ) : isStreaming && answer?.rawText ? <span className="stream-cursor" /> : null}
         </>
       ) : (
         <>
@@ -59,11 +64,14 @@ export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry,
           {answer.outro && <div className="assistant-outro"><Markdown>{answer.outro}</Markdown></div>}
         </>
       )}
-      {errorMessage && (
+      {errorMessage && node.status === "error" && (
         <div className="inline-generation-state">
           <span>{errorMessage}</span>
-          {node.status !== "done" && <button className="text-button" onClick={onRetry}>{t("retry")}</button>}
+          <button className="text-button" onClick={onRetry}>{t("retry")}</button>
         </div>
+      )}
+      {specialFinishMessage && node.status !== "truncated" && node.status !== "error" && (
+        <div className="inline-generation-state">{specialFinishMessage}</div>
       )}
       {node.status === "truncated" && (
         <div className="truncation-state" role="status">
@@ -77,7 +85,6 @@ export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry,
           {node.usage.inputTokens !== undefined && <span>{t("inputTokens", { count: node.usage.inputTokens })}</span>}
           {node.usage.outputTokens !== undefined && <span>{t("outputTokens", { count: node.usage.outputTokens })}</span>}
           {node.usage.totalTokens !== undefined && <span>{t("totalTokens", { count: node.usage.totalTokens })}</span>}
-          {node.providerFinishReason && <span>{t("stopReason", { reason: node.providerFinishReason })}</span>}
         </div>
       )}
     </article>

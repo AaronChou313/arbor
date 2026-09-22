@@ -4,6 +4,7 @@ import { useAppStore } from "../../app/store";
 import { useAppData } from "../../hooks/useAppData";
 import { conversationRepo } from "../../lib/db/repositories";
 import { useI18n } from "../../i18n";
+import arborLogo from "../../../assets/images/Arbor.svg";
 
 type Props = { open: boolean; onClose: () => void };
 
@@ -36,7 +37,7 @@ export function Sidebar({ open, onClose }: Props) {
     const next = window.prompt(t("renameConversation"), title)?.trim();
     if (!next) return;
     const conversation = await conversationRepo.get(id);
-    if (conversation) await conversationRepo.put({ ...conversation, title: next, updatedAt: Date.now() });
+    if (conversation) await conversationRepo.put({ ...conversation, title: next, titleSource: "manual", updatedAt: Date.now() });
     setMenuId(null);
     refresh();
   };
@@ -79,7 +80,10 @@ export function Sidebar({ open, onClose }: Props) {
   return (
     <aside className={`sidebar ${open ? "open" : ""}`}>
       <div className="brand-row">
-        <button className="brand" onClick={newChat}>Arbor</button>
+        <button className="brand" onClick={newChat}>
+          <span className="brand-mark" aria-hidden><img src={arborLogo} alt="" /></span>
+          <span>Arbor</span>
+        </button>
         <button className="icon-button mobile-only" onClick={onClose} aria-label={t("closeNavigation")}>×</button>
       </div>
       <button className="new-chat" onClick={newChat}><span aria-hidden>＋</span> {t("newChat")}</button>

@@ -49,7 +49,7 @@ Open **Settings → Providers**, add a provider, and choose one of these protoco
 
 Enter a name, API root URL, API key, and model. Arbor accepts a service root, a URL ending in `/v1`, or the complete protocol endpoint. Use **Test connection** before saving, then mark the provider active.
 
-The provider's **Advanced** settings include **Max output tokens**. New providers use the recommended value of 8192; clear the field to let the service choose its default. Arbor records token usage and the provider's finish reason. A response stopped by `length`, `max_tokens`, or `max_output_tokens` is marked as truncated and offers **Continue generating** instead of being treated as normally complete.
+The provider's **Advanced** settings include **Max output tokens** and defaults to Auto. OpenAI-compatible protocols omit the limit in Auto mode; adapters that require a value apply an internal compatibility default. Arbor automatically continues responses stopped by `length`, `max_tokens`, or `max_output_tokens`, merges repeated boundaries, and presents all segments as one answer. After five consecutive automatic continuations, it pauses and offers **Continue generating** to prevent uncontrolled usage.
 
 Model answers use normal Markdown. Text before the first `##` is the introduction, and each top-level `##` becomes a clickable learning section; lower headings remain inside that section. LaTeX is rendered directly without a JSON response wrapper.
 

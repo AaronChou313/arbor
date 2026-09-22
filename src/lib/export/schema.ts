@@ -26,11 +26,15 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isStringOrNull = (value: unknown): value is string | null =>
   typeof value === "string" || value === null;
 
+const isTitleSource = (value: unknown): boolean =>
+  value === undefined || ["fallback", "ai", "manual"].includes(String(value));
+
 function isConversation(value: unknown): value is Conversation {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
     typeof value.title === "string" &&
+    isTitleSource(value.titleSource) &&
     isStringOrNull(value.rootNodeId) &&
     isStringOrNull(value.currentNodeId) &&
     typeof value.createdAt === "number" &&
@@ -48,6 +52,8 @@ function isNode(value: unknown): value is ConversationNode {
     (value.anchorQuote === undefined || isStringOrNull(value.anchorQuote)) &&
     (value.anchorBlockId === undefined || isStringOrNull(value.anchorBlockId)) &&
     typeof value.userMessage === "string" &&
+    (value.title === undefined || typeof value.title === "string") &&
+    isTitleSource(value.titleSource) &&
     (value.assistant === null || isRecord(value.assistant)) &&
     isRecord(value.providerSnapshot) &&
     typeof value.providerSnapshot.providerId === "string" &&

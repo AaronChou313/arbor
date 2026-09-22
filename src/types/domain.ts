@@ -46,6 +46,8 @@ export type GenerationUsage = {
   totalTokens?: number;
 };
 
+export type TitleSource = "fallback" | "ai" | "manual";
+
 export type ConversationNode = {
   id: string;
   conversationId: string;
@@ -54,6 +56,8 @@ export type ConversationNode = {
   anchorQuote?: string | null;
   anchorBlockId?: string | null;
   userMessage: string;
+  title?: string;
+  titleSource?: TitleSource;
   assistant: StructuredAnswer | null;
   providerSnapshot: { providerId: string; model: string };
   status: NodeStatus;
@@ -67,6 +71,7 @@ export type ConversationNode = {
 export type Conversation = {
   id: string;
   title: string;
+  titleSource?: TitleSource;
   rootNodeId: string | null;
   currentNodeId: string | null;
   createdAt: number;
