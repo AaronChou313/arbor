@@ -14,8 +14,29 @@ import { conversationRepo, nodeRepo, preferencesRepo } from "../../lib/db/reposi
 import { getProviderAdapter } from "../../lib/provider-adapters";
 import { AppError, mapFetchError } from "../../lib/provider-adapters/errors";
 import { createId, truncateTitle } from "../../lib/utils/id";
-import type { Conversation, ConversationNode } from "../../types/domain";
+import type { Conversation, ConversationNode, FinishReason, GenerationUsage } from "../../types/domain";
 import { useI18n } from "../../i18n";
+
+const continuationInstruction = `Continue the previous answer exactly where it stopped because of the output limit.
+Start on a new line, do not repeat completed material, preserve the existing language and Markdown structure, and finish the explanation.`;
+
+function latestUsage(current: GenerationUsage, event: GenerationUsage): GenerationUsage {
+  return {
+    inputTokens: event.inputTokens ?? current.inputTokens,
+    outputTokens: event.outputTokens ?? current.outputTokens,
+    totalTokens: event.totalTokens ?? current.totalTokens,
+  };
+}
+
+function accumulatedUsage(previous: GenerationUsage | undefined, current: GenerationUsage): GenerationUsage | undefined {
+  const add = (left?: number, right?: number) => right === undefined ? left : (left ?? 0) + right;
+  const result = {
+    inputTokens: add(previous?.inputTokens, current.inputTokens),
+    outputTokens: add(previous?.outputTokens, current.outputTokens),
+    totalTokens: add(previous?.totalTokens, current.totalTokens),
+  };
+  return Object.values(result).some((value) => value !== undefined) ? result : undefined;
+}
 
 export function ChatPage() {
   const navigate = useNavigate();
@@ -86,16 +107,26 @@ export function ChatPage() {
   }, []);
 
   const generate = useCallback(
-    async (initialNode: ConversationNode) => {
+    async (initialNode: ConversationNode, append = false) => {
       if (!activeProvider) return;
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+      const existingRawText = append ? initialNode.assistant?.rawText ?? "" : "";
+      const continuationSeparator = existingRawText && !existingRawText.endsWith("\n") ? "\n\n" : "";
+      const previousUsage = append ? initialNode.usage : undefined;
+      let requestUsage: GenerationUsage = {};
+      let continuationText = "";
+      let finishReason: FinishReason = "unknown";
+      let providerFinishReason: string | undefined;
       let node: ConversationNode = {
         ...initialNode,
-        assistant: { rawText: "", sections: [] },
+        assistant: append ? initialNode.assistant : { rawText: "", sections: [] },
         status: "streaming",
         error: undefined,
+        finishReason: undefined,
+        providerFinishReason: undefined,
+        usage: previousUsage,
       };
       replaceNode(node);
       await nodeRepo.put(node);
@@ -104,30 +135,44 @@ export function ChatPage() {
         const allNodes = await nodeRepo.list(node.conversationId);
         const currentPath = buildPath(node.id, allNodes.map((item) => (item.id === node.id ? node : item)));
         const adapter = getProviderAdapter(activeProvider.protocol);
-        let rawText = "";
+        const messages = buildContext(currentPath);
+        if (append) messages.push({ role: "user", content: continuationInstruction });
         for await (const event of adapter.stream(activeProvider, {
           systemPrompt: buildSystemPrompt(preferences),
-          messages: buildContext(currentPath),
+          messages,
           model: activeProvider.model,
           signal: controller.signal,
         })) {
-          if (event.type !== "text-delta") continue;
-          rawText += event.text;
-          node = {
-            ...node,
-            assistant: {
-              rawText,
-              sections: [],
-              fallbackReason: looksLikeLegacyProtocol(rawText) ? "protocol" : undefined,
-            },
-          };
-          replaceNode(node);
+          if (event.type === "text-delta") {
+            continuationText += event.text;
+            const rawText = `${existingRawText}${continuationSeparator}${continuationText}`;
+            node = {
+              ...node,
+              assistant: {
+                rawText,
+                sections: [],
+                fallbackReason: looksLikeLegacyProtocol(rawText) ? "protocol" : undefined,
+              },
+            };
+            replaceNode(node);
+          } else if (event.type === "usage") {
+            requestUsage = latestUsage(requestUsage, event);
+            node = { ...node, usage: accumulatedUsage(previousUsage, requestUsage) };
+            replaceNode(node);
+          } else {
+            finishReason = event.finishReason;
+            providerFinishReason = event.providerReason;
+          }
         }
+        const rawText = `${existingRawText}${continuationSeparator}${continuationText}`;
         node = {
           ...node,
           assistant: parseMarkdownAnswer(rawText),
-          status: "done",
-          error: undefined,
+          status: finishReason === "length" ? "truncated" : finishReason === "error" ? "error" : "done",
+          error: finishReason === "error" ? "BAD_RESPONSE" : undefined,
+          finishReason,
+          providerFinishReason,
+          usage: accumulatedUsage(previousUsage, requestUsage),
         };
         replaceNode(node);
         await nodeRepo.put(node);
@@ -166,6 +211,8 @@ export function ChatPage() {
       conversationId,
       parentNodeId,
       anchorSectionId: selectedAnchor?.sectionId ?? null,
+      anchorQuote: selectedAnchor?.quote ?? null,
+      anchorBlockId: selectedAnchor?.blockId ?? null,
       userMessage: message,
       assistant: null,
       providerSnapshot: { providerId: activeProvider.id, model: activeProvider.model },
@@ -211,10 +258,18 @@ export function ChatPage() {
       assistant: null,
       status: "pending" as const,
       error: undefined,
+      finishReason: undefined,
+      providerFinishReason: undefined,
+      usage: undefined,
     };
     replaceNode(next);
     await nodeRepo.put(next);
     await generate(next);
+  };
+
+  const continueGeneration = async (node: ConversationNode) => {
+    if (!activeProvider || generating || node.status !== "truncated") return;
+    await generate(node, true);
   };
 
   const toggleTheme = async () => {
@@ -269,6 +324,7 @@ export function ChatPage() {
                   selectedAnchor={selectedAnchor}
                   onSelectAnchor={setSelectedAnchor}
                   onRetry={() => void retry(node)}
+                  onContinue={() => void continueGeneration(node)}
                 />
               </div>
             );

@@ -102,6 +102,9 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .generation-error { padding: 13px 14px; border: 1px solid color-mix(in srgb, var(--danger) 38%, var(--border)); border-radius: var(--radius-sm); color: var(--text-secondary); }
 .generation-error p { margin: 0 0 10px; }
 .inline-generation-state { margin-top: 10px; display: flex; align-items: center; gap: 8px; color: var(--text-tertiary); font-size: 12px; }
+.truncation-state { margin-top: 16px; padding: 11px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--text-secondary); font-size: 13px; }
+.usage-state { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--text-tertiary); font-size: 11px; }
+.usage-state span:first-child { font-weight: 700; }
 .typing-indicator { height: 26px; display: flex; gap: 4px; align-items: center; }
 .typing-indicator span { width: 5px; height: 5px; background: var(--text-tertiary); border-radius: 50%; animation: typing 1s infinite alternate; }
 .typing-indicator span:nth-child(2) { animation-delay: 150ms; }
@@ -168,6 +171,10 @@ textarea { resize: vertical; line-height: 1.55; }
 .checkbox-label { width: fit-content !important; display: flex !important; flex-direction: row !important; align-items: center; gap: 8px !important; color: var(--text-secondary); font-size: 12px; }
 .checkbox-label input { width: 15px; height: 15px; padding: 0; accent-color: var(--accent); }
 .security-note { margin: 0 !important; }
+.advanced-settings { padding: 2px 0; }
+.advanced-settings summary { width: fit-content; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+.advanced-settings label { margin-top: 12px; }
+.advanced-settings small { color: var(--text-tertiary); line-height: 1.4; }
 .test-result { padding: 9px 10px; border-radius: var(--radius-sm); font-size: 13px; }
 .test-result.success { color: var(--success); background: color-mix(in srgb, var(--success) 9%, var(--surface)); }
 .test-result.error { color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--surface)); }

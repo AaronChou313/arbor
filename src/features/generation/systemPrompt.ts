@@ -19,6 +19,7 @@ Use the language of the user's latest question by default, unless the user expli
 You may write a short introduction before the first heading. Then divide the answer into meaningful top-level knowledge modules using level-two Markdown headings (##). Each ## module should make sense as a place the learner could continue asking questions.
 Use ### or lower headings only inside a ## module. Do not mechanically create a target number of sections: let the subject determine the useful structure. Do not wrap the whole answer in a code fence.
 Write mathematical notation naturally with LaTeX delimiters such as $...$ and $$...$$. Do not escape LaTeX for JSON.
+When the conversation context contains an Arbor selected-section context marker, treat that Section as the user's explicit local focus. Resolve vague local references inside it first, and ask a brief clarifying question instead of guessing when multiple objects in that Section could match.
 ${detailTargets[preferences.detail]}
 ${densityTargets[preferences.sectionDensity]}
 ${preferences.math === "latex" ? "Prefer LaTeX notation for mathematical expressions." : "Use mathematical notation when it improves clarity."}

@@ -30,11 +30,25 @@ describe("buildContext", () => {
   });
 
   it("crops the parent answer to the selected anchor", () => {
-    const child = { ...root, id: "child", parentNodeId: "root", anchorSectionId: "tls", userMessage: "How is TLS solved?", assistant: null };
+    const child = {
+      ...root,
+      id: "child",
+      parentNodeId: "root",
+      anchorSectionId: "tls",
+      anchorQuote: "Total least squares",
+      anchorBlockId: "formula-3",
+      userMessage: "How is TLS solved?",
+      assistant: null,
+    };
     const messages = buildContext([root, child]);
     expect(messages[1].content).toContain("Overview");
     expect(messages[1].content).toContain("Total least squares");
     expect(messages[1].content).not.toContain("Ordinary least squares");
+    expect(messages[1].content).toContain("explicitly selected this Section");
+    expect(messages[1].content).toContain("the third step");
+    expect(messages[1].content).toContain("do not guess");
+    expect(messages[1].content).toContain("Selected block ID: formula-3");
+    expect(messages[1].content).toContain("Selected quote: Total least squares");
   });
 
   it("does not append an empty assistant turn for the node being generated", () => {

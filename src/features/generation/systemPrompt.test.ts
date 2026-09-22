@@ -9,6 +9,8 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("language of the user's latest question");
     expect(prompt).toContain("level-two Markdown headings (##)");
     expect(prompt).toContain("Do not mechanically create");
+    expect(prompt).toContain("selected-section context marker");
+    expect(prompt).toContain("instead of guessing");
     expect(prompt).toContain("$...$");
     expect(prompt).not.toContain("valid JSON");
     expect(prompt).not.toContain('"sections"');

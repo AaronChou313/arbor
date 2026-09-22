@@ -33,6 +33,7 @@ function newProvider(name: string): ProviderConfig {
     apiKey: "",
     rememberApiKey: false,
     model: "",
+    maxOutputTokens: 8192,
     createdAt: now,
     updatedAt: now,
   };
@@ -82,6 +83,11 @@ export function SettingsPage() {
   const saveProvider = async () => {
     if (!draft?.name.trim() || !draft.baseUrl.trim() || !draft.model.trim()) {
       setNotice("requiredProviderFields");
+      return;
+    }
+    if (draft.maxOutputTokens !== undefined &&
+      (!Number.isInteger(draft.maxOutputTokens) || draft.maxOutputTokens <= 0)) {
+      setNotice("invalidMaxOutputTokens");
       return;
     }
     const key = draft.apiKey ?? "";
@@ -209,6 +215,23 @@ export function SettingsPage() {
               <label className="field-wide">{t("baseUrl")}<input value={draft.baseUrl} placeholder={defaults[draft.protocol]} onChange={(event) => setDraft({ ...draft, baseUrl: event.target.value })} /></label>
               <label>{t("apiKey")}<input type="password" autoComplete="off" value={draft.apiKey ?? ""} onChange={(event) => setDraft({ ...draft, apiKey: event.target.value })} /></label>
               <label>{t("model")}<input value={draft.model} onChange={(event) => setDraft({ ...draft, model: event.target.value })} /></label>
+              <details className="advanced-settings field-wide">
+                <summary>{t("advanced")}</summary>
+                <label>{t("maxOutputTokens")}
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="8192"
+                    value={draft.maxOutputTokens ?? ""}
+                    onChange={(event) => setDraft({
+                      ...draft,
+                      maxOutputTokens: event.target.value === "" ? undefined : Number(event.target.value),
+                    })}
+                  />
+                  <small>{t("maxOutputTokensHint")}</small>
+                </label>
+              </details>
               <label className="checkbox-label field-wide">
                 <input type="checkbox" checked={draft.rememberApiKey} onChange={(event) => setDraft({ ...draft, rememberApiKey: event.target.checked })} />
                 {t("rememberApiKey")}

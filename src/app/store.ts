@@ -4,6 +4,8 @@ export type SelectedAnchor = {
   sourceNodeId: string;
   sectionId: string;
   title: string;
+  quote?: string;
+  blockId?: string;
 };
 
 type AppState = {

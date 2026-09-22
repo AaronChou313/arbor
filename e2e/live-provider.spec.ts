@@ -20,6 +20,8 @@ test("real provider completes the branching learning flow", async ({ page }) => 
   await page.getByLabel("Base URL").fill(baseUrl);
   await page.getByLabel("API Key", { exact: true }).fill(apiKey);
   await page.getByLabel("Model").fill(model);
+  await page.getByText("Advanced", { exact: true }).click();
+  await expect(page.getByLabel("Max output tokens")).toHaveValue("8192");
   await page.getByRole("button", { name: "Test connection" }).click();
   await expect(page.getByText("Endpoint, authentication, and model accepted.")).toBeVisible({ timeout: 90_000 });
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -42,6 +44,7 @@ test("real provider completes the branching learning flow", async ({ page }) => 
   await expect(rootSections.nth(1)).toBeVisible({ timeout: 120_000 });
   expect(await rootSections.count()).toBeGreaterThanOrEqual(2);
   await expect(page.locator(".messages .katex").first()).toBeVisible();
+  await expect(page.getByLabel("用量").first()).toContainText("停止原因：end_turn");
 
   const firstTitle = (await rootSections.nth(0).locator(".section-title").innerText()).trim();
   const secondTitle = (await rootSections.nth(1).locator(".section-title").innerText()).trim();

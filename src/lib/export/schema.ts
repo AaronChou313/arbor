@@ -45,12 +45,14 @@ function isNode(value: unknown): value is ConversationNode {
     typeof value.conversationId === "string" &&
     isStringOrNull(value.parentNodeId) &&
     isStringOrNull(value.anchorSectionId) &&
+    (value.anchorQuote === undefined || isStringOrNull(value.anchorQuote)) &&
+    (value.anchorBlockId === undefined || isStringOrNull(value.anchorBlockId)) &&
     typeof value.userMessage === "string" &&
     (value.assistant === null || isRecord(value.assistant)) &&
     isRecord(value.providerSnapshot) &&
     typeof value.providerSnapshot.providerId === "string" &&
     typeof value.providerSnapshot.model === "string" &&
-    ["pending", "streaming", "done", "error", "aborted"].includes(String(value.status)) &&
+    ["pending", "streaming", "done", "truncated", "error", "aborted"].includes(String(value.status)) &&
     typeof value.createdAt === "number"
   );
 }
@@ -65,6 +67,8 @@ function isProvider(value: unknown): value is ProviderConfig {
     (value.apiKey === undefined || typeof value.apiKey === "string") &&
     typeof value.rememberApiKey === "boolean" &&
     typeof value.model === "string" &&
+    (value.maxOutputTokens === undefined ||
+      (typeof value.maxOutputTokens === "number" && Number.isInteger(value.maxOutputTokens) && value.maxOutputTokens > 0)) &&
     typeof value.createdAt === "number" &&
     typeof value.updatedAt === "number"
   );

@@ -8,9 +8,10 @@ type Props = {
   selectedAnchor: SelectedAnchor | null;
   onSelectAnchor: (anchor: SelectedAnchor) => void;
   onRetry: () => void;
+  onContinue: () => void;
 };
 
-export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry }: Props) {
+export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry, onContinue }: Props) {
   const { t } = useI18n();
   const answer = node.assistant;
   const isStreaming = node.status === "pending" || node.status === "streaming";
@@ -35,7 +36,7 @@ export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry 
         <>
           {answer?.fallbackReason === "protocol" ? (
             <p className="protocol-fallback">{t("responseProtocolError")}</p>
-          ) : answer?.rawText ? <Markdown>{answer.rawText}</Markdown> : <div className="typing-indicator"><span /><span /><span /></div>}
+          ) : answer?.rawText ? <Markdown>{answer.rawText}</Markdown> : isStreaming ? <div className="typing-indicator"><span /><span /><span /></div> : null}
           {isStreaming && answer?.rawText && <span className="stream-cursor" />}
         </>
       ) : (
@@ -62,6 +63,21 @@ export function AssistantAnswer({ node, selectedAnchor, onSelectAnchor, onRetry 
         <div className="inline-generation-state">
           <span>{errorMessage}</span>
           {node.status !== "done" && <button className="text-button" onClick={onRetry}>{t("retry")}</button>}
+        </div>
+      )}
+      {node.status === "truncated" && (
+        <div className="truncation-state" role="status">
+          <span>{t("outputLimitReached")}</span>
+          <button className="secondary-button" onClick={onContinue}>{t("continueGenerating")}</button>
+        </div>
+      )}
+      {node.usage && (
+        <div className="usage-state" aria-label={t("usage")}>
+          <span>{t("usage")}</span>
+          {node.usage.inputTokens !== undefined && <span>{t("inputTokens", { count: node.usage.inputTokens })}</span>}
+          {node.usage.outputTokens !== undefined && <span>{t("outputTokens", { count: node.usage.outputTokens })}</span>}
+          {node.usage.totalTokens !== undefined && <span>{t("totalTokens", { count: node.usage.totalTokens })}</span>}
+          {node.providerFinishReason && <span>{t("stopReason", { reason: node.providerFinishReason })}</span>}
         </div>
       )}
     </article>

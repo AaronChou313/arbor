@@ -11,6 +11,7 @@ export type ProviderConfig = {
   apiKey?: string;
   rememberApiKey: boolean;
   model: string;
+  maxOutputTokens?: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -29,18 +30,37 @@ export type StructuredAnswer = {
   fallbackReason?: "unsectioned" | "protocol";
 };
 
-export type NodeStatus = "pending" | "streaming" | "done" | "error" | "aborted";
+export type NodeStatus = "pending" | "streaming" | "done" | "truncated" | "error" | "aborted";
+
+export type FinishReason =
+  | "stop"
+  | "length"
+  | "content-filter"
+  | "tool-call"
+  | "error"
+  | "unknown";
+
+export type GenerationUsage = {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+};
 
 export type ConversationNode = {
   id: string;
   conversationId: string;
   parentNodeId: string | null;
   anchorSectionId: string | null;
+  anchorQuote?: string | null;
+  anchorBlockId?: string | null;
   userMessage: string;
   assistant: StructuredAnswer | null;
   providerSnapshot: { providerId: string; model: string };
   status: NodeStatus;
   error?: string;
+  finishReason?: FinishReason;
+  providerFinishReason?: string;
+  usage?: GenerationUsage;
   createdAt: number;
 };
 
@@ -84,8 +104,8 @@ export type GenerateInput = {
 
 export type StreamEvent =
   | { type: "text-delta"; text: string }
-  | { type: "usage"; inputTokens?: number; outputTokens?: number }
-  | { type: "done" };
+  | ({ type: "usage" } & GenerationUsage)
+  | { type: "done"; finishReason: FinishReason; providerReason?: string };
 
 export type TestResult = {
   ok: boolean;

@@ -49,6 +49,8 @@ Open **Settings → Providers**, add a provider, and choose one of these protoco
 
 Enter a name, API root URL, API key, and model. Arbor accepts a service root, a URL ending in `/v1`, or the complete protocol endpoint. Use **Test connection** before saving, then mark the provider active.
 
+The provider's **Advanced** settings include **Max output tokens**. New providers use the recommended value of 8192; clear the field to let the service choose its default. Arbor records token usage and the provider's finish reason. A response stopped by `length`, `max_tokens`, or `max_output_tokens` is marked as truncated and offers **Continue generating** instead of being treated as normally complete.
+
 Model answers use normal Markdown. Text before the first `##` is the introduction, and each top-level `##` becomes a clickable learning section; lower headings remain inside that section. LaTeX is rendered directly without a JSON response wrapper.
 
 By default, API keys are session-only. Enabling **Remember API key on this device** stores the key in IndexedDB. Full backups omit keys unless you explicitly opt in.
@@ -72,6 +74,8 @@ The production route is `/#/`; settings are at `/#/settings`.
 ## Data model
 
 Conversations and nodes are stored separately. Each node carries a `parentNodeId`; Arbor reconstructs only the root-to-current path for display and model context. If a child was created from an answer section, only that selected parent section is included in the next context instead of its sibling sections.
+
+Selected-section context explicitly tells the model that the user chose that module, so local references such as “this formula” and “the third step” are resolved inside it. Nodes also reserve optional `anchorQuote` and `anchorBlockId` fields for future paragraph- and formula-level anchors.
 
 Single conversations and full local backups can be exported as schema-versioned JSON from Settings.
 

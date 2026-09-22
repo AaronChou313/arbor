@@ -47,10 +47,47 @@ async function configureProvider(page: Page) {
   await page.getByLabel("Base URL").fill("https://mock.arbor.test");
   await page.getByLabel("API Key", { exact: true }).fill("test-key");
   await page.getByLabel("Model").fill("test-model");
+  await page.getByText("Advanced", { exact: true }).click();
+  await expect(page.getByLabel("Max output tokens")).toHaveValue("8192");
   await page.getByRole("button", { name: "Test connection" }).click();
   await expect(page.getByText(/Endpoint, authentication, and model accepted/)).toBeVisible();
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Provider saved.")).toBeVisible();
+}
+
+async function mockTruncatedProvider(page: Page) {
+  let generation = 0;
+  await page.route(endpoint, async (route) => {
+    const payload = route.request().postDataJSON() as { stream?: boolean } | null;
+    if (!payload?.stream) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: { "access-control-allow-origin": "*" },
+        body: JSON.stringify({ id: "connection-test", output: [] }),
+      });
+      return;
+    }
+
+    generation += 1;
+    const first = generation === 1;
+    const text = first
+      ? "An answer that stops early.\n\n## Derivation\n\nThe derivation begins with $x^2$ and"
+      : "## Continued explanation\n\ncontinues through the remaining derivation.";
+    const terminal = first
+      ? { type: "response.incomplete", response: { status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, usage: { input_tokens: 10, output_tokens: 128, total_tokens: 138 } } }
+      : { type: "response.completed", response: { status: "completed", usage: { input_tokens: 20, output_tokens: 64, total_tokens: 84 } } };
+    const body = [
+      `event: response.output_text.delta\ndata: ${JSON.stringify({ type: "response.output_text.delta", delta: text })}`,
+      `event: ${terminal.type}\ndata: ${JSON.stringify(terminal)}`,
+    ].join("\n\n");
+    await route.fulfill({
+      status: 200,
+      contentType: "text/event-stream",
+      headers: { "access-control-allow-origin": "*" },
+      body,
+    });
+  });
 }
 
 test("creates anchored sibling branches and restores the current path", async ({ page }) => {
@@ -67,7 +104,7 @@ test("creates anchored sibling branches and restores the current path", async ({
   await expect(page.getByText("Based on:")).toBeVisible();
   await composer.fill("Why squared residuals?");
   await composer.press("Enter");
-  await expect(page.getByText("Why squared residuals?")).toBeVisible();
+  await expect(page.locator(".messages").getByText("Why squared residuals?", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Tree", exact: true }).click();
   const tree = page.locator(".tree-drawer");
@@ -118,4 +155,23 @@ test("persists appearance and exports a schema-versioned conversation", async ({
 
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
+test("shows token-limit truncation, usage, and continues the same answer", async ({ page }) => {
+  await mockTruncatedProvider(page);
+  await configureProvider(page);
+  await page.getByRole("button", { name: "Back to chat" }).click();
+  const composer = page.getByRole("textbox", { name: "Message", exact: true });
+  await composer.fill("Give me a long derivation");
+  await composer.press("Enter");
+
+  await expect(page.getByText("The response reached the output length limit.")).toBeVisible();
+  await expect(page.getByLabel("Usage")).toContainText("output 128");
+  await expect(page.getByLabel("Usage")).toContainText("stop: max_output_tokens");
+  await page.getByRole("button", { name: "Continue generating" }).click();
+
+  await expect(page.getByText("The response reached the output length limit.")).not.toBeVisible();
+  await expect(page.getByRole("button", { name: /Continued explanation/ })).toBeVisible();
+  await expect(page.getByLabel("Usage")).toContainText("output 192");
+  await expect(page.getByLabel("Usage")).toContainText("stop: completed");
 });
